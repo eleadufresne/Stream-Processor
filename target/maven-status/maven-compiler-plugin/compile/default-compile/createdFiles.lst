@@ -1,5 +1,3 @@
 com\oranges\streamprocessing\FruitStreaming.class
-com\oranges\streamprocessing\FruitStreaming$Tokenizer.class
-com\oranges\streamprocessing\FruitStreaming$CountFunction.class
-com\oranges\streamprocessing\FruitStreaming$FilterFunction.class
-com\oranges\streamprocessing\FruitStreaming$1.class
+com\oranges\streamprocessing\FruitStreaming$Splitter.class
+com\oranges\streamprocessing\util\TreeData.class

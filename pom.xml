@@ -4,7 +4,7 @@
 
 	<groupId>com.oranges</groupId>
 	<artifactId>fruit-stream-processor</artifactId>
-	<version>1.0-SNAPSHOT</version>
+	<version>1.0</version>
 	<packaging>jar</packaging>
 
 	<name>fruit_streaming</name>

@@ -8,7 +8,7 @@ public class TreeData {
 
     public static final String[] WORDS =
             new String[] {
-                "ick orange", "sick orange", "leaf", "rotten orange", "ripe orange", "sick orange",
+                "sick orange", "sick orange", "leaf", "rotten orange", "ripe orange", "sick orange",
                 "immature orange", "rotten orange", "leaf", "leaf", "leaf", "rotten orange",
                 "sick orange", "ripe orange", "leaf", "leaf", "leaf", "immature orange", "leaf",
                 "leaf", "leaf", "immature orange", "leaf", "sick orange", "rotten orange",
