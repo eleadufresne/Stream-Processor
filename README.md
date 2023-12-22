@@ -47,3 +47,17 @@ cd ../fruit* && mvn clean package && cd ../flink*
 ```
 Some example files are provided in the util folder for monitoring. You now visualize the job on the Flink dashboard 
 on [localhost:8081](http://localhost:8081).
+
+# Common Issues
+If you encounter a `java.nio.file.FileSystemException`, it could mean that the task-executor wasn't stopped properly. 
+To get around this issue, you can use the Resource Monitor on Windows to find out which process is using the file:
+
+1. Open the Task Manager (Ctrl + Shift + Esc).
+2. Go to the "Performance" tab.
+3. Click on "Open Resource Monitor" at the bottom.
+4. In the Resource Monitor, navigate to the "CPU" tab.
+5. Expand the "Associated Handles" section.
+6. Type in the name of the file you're looking for in the search box.
+7. Terminate any processes that are using the file.
+
+This should resolve the `java.nio.file.FileSystemException` error.
