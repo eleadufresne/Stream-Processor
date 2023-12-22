@@ -1,3 +1,4 @@
 com\oranges\streamprocessing\FruitStreaming.class
+com\oranges\streamprocessing\FruitStreaming$Tokenizer.class
 com\oranges\streamprocessing\FruitStreaming$Splitter.class
 com\oranges\streamprocessing\util\TreeData.class
