@@ -3,18 +3,15 @@
  * different types of oranges, and prints the result. To run the app, specify the directory path
  * as a command-line argument. For example:
  *
- * ./bin/flink run /path/to/fruit-streaming-1.jar --path data/
- *
- * useful documentation :
- * https://nightlies.apache.org/flink/flink-docs-release-1.18/docs/dev/datastream/overview/#anatomy-of-a-flink-program
- *
+ *          ./bin/flink run /path/to/fruit-streaming-1.jar --path data/
  */
 
 package com.oranges.streamprocessing;
-
 import java.time.Duration;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.api.common.serialization.SimpleStringEncoder;
+import org.apache.flink.connector.file.sink.FileSink;
 import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -22,9 +19,8 @@ import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
-import org.apache.flink.streaming.api.windowing.time.Time;
-
+import org.apache.flink.streaming.api.functions.sink.filesystem.OutputFileConfig;
+import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.OnCheckpointRollingPolicy;
 import org.apache.flink.connector.file.src.FileSource;
 
 
@@ -40,51 +36,68 @@ public class FruitStreaming {
     }
 
     /** main method that executes the Flink app
-     * @param args command-line arguments */
+     * @param args command-line arguments
+     * @implNote see <a href="https://nightlies.apache.org/flink/flink-docs-release-1.18/docs/dev/datastream/overview/#anatomy-of-a-flink-program">...</a>
+     * */
     public static void main(String[] args) throws Exception {
-        /* 1. Obtain an execution environment (main entry point to building Flink applications) */
+        /* STEP 1 - obtain an execution environment (main entry point to building Flink apps) ****/
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        /* 2. Load/create the initial data */
+        // enable checkpoints every 10s (Flink needs to complete checkpoints to finalize writing)
+        env.enableCheckpointing(10000);
+
+        /* STEP 2 - load the initial data ********************************************************/
+
+        // TODO input images
+
         final ParameterTool params = ParameterTool.fromArgs(args); // input
+        env.getConfig().setGlobalJobParameters(params); //make it available in the Flink UI
 
-        env.getConfig().setGlobalJobParameters(params);  // make the input available in the Flink UI
+        // monitor the directory given by the "--path" argument or default to "data/"
+        String input_path = params.get("path", "data/");
 
-        String path_to_dir = params.get("path", "data/"); // directory to monitor
-
-        FileSource<String> source_dir = FileSource
-            .forRecordStreamFormat(new TextLineInputFormat(), new Path(path_to_dir))
+        // set a source (DAG)
+        FileSource<String> source = FileSource
+            .forRecordStreamFormat(new TextLineInputFormat(), new Path(input_path))
             .monitorContinuously(Duration.ofSeconds(10)) // monitor every 10s
             .build();
 
+        // save data to a stream
         DataStream<String> data_stream = env.fromSource(
-            source_dir,
+            source,
             WatermarkStrategy.noWatermarks(),
             "source directory");
 
-        /* https://github.com/SparkWorksnet/demoFlink/blob/master/src/main/java/net/sparkworks/stream/StreamProcessor.java
-        // Define the window and apply the reduce transformation
-        DataStream resultStream = keyedStream
-                .timeWindow(Time.seconds(10))
-                .reduce(new SensorDataAverageReduce());
-         */
+        /* STEP 3 - transform the data ***********************************************************/
 
-        // TODO take input from a directory of files
-
-        /* 3. Specify transformations on this data */
-
+        // filter out everything that is not an orange, and group them by features
         DataStream<Tuple2<String, Integer>> orange_count = data_stream
-            .filter((FilterFunction<String>) value -> value.endsWith("orange")) // keep oranges
-            .map(new Tokenizer()) // split up the lines in pairs (2-tuples) containing: tuple2 {(rotten,1)...}
-            .keyBy(value -> value.f0) // group by the tuple field "0" (orange feature)
-            .window(TumblingProcessingTimeWindows.of(Time.seconds(5))) // every 5 seconds
-            .sum(1); // sum up tuple field "1" (the number of such oranges)
+            .filter((FilterFunction<String>) value -> value.endsWith("orange"))
+            .map(new Tokenizer())
+            .keyBy(value -> value.f0)
+             // .window(TumblingProcessingTimeWindows.of(Time.seconds(10))) // every 10 seconds
+            .sum(1);
 
-        // TODO replace words by images
+        /* STEP 4 - store the results ************************************************************/
 
-        /* 4. Specify where to put the results of your computations */
+        // output to a file
+        OutputFileConfig output_file = OutputFileConfig
+            .builder()
+            .withPartPrefix("monitoring-data")
+            .withPartSuffix(".txt")
+            .build();
 
-        // TODO monitor this directory at windowed intervals
+        FileSink<Tuple2<String, Integer>> file_sink = FileSink
+            .forRowFormat(
+                new Path(input_path + "monitoring-files"),
+                new SimpleStringEncoder<Tuple2<String, Integer>>("UTF-8"))
+            .withOutputFileConfig(output_file)
+            .withRollingPolicy(OnCheckpointRollingPolicy.build()) // this is important
+            .build();
+
+        orange_count.sinkTo(file_sink);
+
+        // TODO output to database
 
         /* 5. Trigger the program execution */
         orange_count.print();

@@ -48,6 +48,8 @@ cd ../fruit* && mvn clean package && cd ../flink*
 Some example files are provided in the util folder for monitoring. You now visualize the job on the Flink dashboard 
 on [localhost:8081](http://localhost:8081).
 
+When you are done, stop the cluster with`./bin/stop-cluster.sh`.
+
 # Common Issues
 If you encounter a `java.nio.file.FileSystemException`, it could mean that the task-executor wasn't stopped properly. 
 To get around this issue, you can use the Resource Monitor on Windows to find out which process is using the file:
