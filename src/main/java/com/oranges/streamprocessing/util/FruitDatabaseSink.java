@@ -12,7 +12,7 @@ import java.sql.SQLException;
  * @author Éléa Dufresne */
 public class FruitDatabaseSink implements SinkFunction<Tuple2<String, Integer>> {
 
-    // credentials to connect to the database
+    /* credentials to connect to the database */
     private final String connection_url, username, password;
     public FruitDatabaseSink(String connection_url, String username, String password) {
             this.connection_url = connection_url;
@@ -26,18 +26,20 @@ public class FruitDatabaseSink implements SinkFunction<Tuple2<String, Integer>> 
     public void invoke(Tuple2<String, Integer> value, Context context) {
         // if there is nothing to insert we might run into issues, so we continue executing
         try (Connection connection = DriverManager.getConnection(connection_url, username, password)) {
-            String sql = "INSERT INTO oranges (feature, count) VALUES (?, ?) ON DUPLICATE KEY " +
-                "UPDATE count = count + ?";
 
-            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            String sql_query = "INSERT INTO oranges (feature, count) VALUES (?, ?) ON DUPLICATE " +
+                "KEY UPDATE count = count + ?";
+
+            try (PreparedStatement statement = connection.prepareStatement(sql_query)) {
                 statement.setString(1, value.f0); // feature
                 statement.setInt(2, value.f1); // count
                 statement.setInt(3, value.f1); // update count
                 statement.executeUpdate();
+            } catch (SQLException e) {
+                System.err.println("ERROR: could not execute the query: " + e.getMessage());
             }
-
         } catch (SQLException e) {
-            System.err.println("Failed to connect to the database or execute query: " + e.getMessage());
+            System.err.println("ERROR: could not connect to the database: " + e.getMessage());
         }
     }
 }

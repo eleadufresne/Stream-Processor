@@ -1,18 +1,10 @@
-/**
- * Flink-based data processing app that reads text files from a directory, filters and counts
- * different types of oranges, and prints the result. To run the app, specify the directory path as
- * a command-line argument. For example:
- *
- * <p>./bin/flink run /path/to/fruit-streaming-1.jar --path data/
- */
 package com.oranges.streamprocessing;
 
-
 import com.oranges.streamprocessing.util.FruitDatabaseSink;
+import com.oranges.streamprocessing.util.Tokenizer;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FilterFunction;
-import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -30,40 +22,22 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 
 import java.time.Duration;
 
-/**
- * @author Éléa Dufresne
- */
+/** Flink-based data processing app that reads files from a directory every 10s, filters and counts
+ *  different types of oranges, and prints the result.
+ *
+ *  @author Éléa Dufresne */
 public class FruitStreaming {
 
-    /** MapFunction takes a string and maps it to a tuple of string and integer */
-    public static final class Tokenizer implements MapFunction<String, Tuple2<String, Integer>> {
-        /**
-         * @param s input string to be mapped
-         * @return a Tuple2 containing the input string paired with the number 1
-         */
-        @Override
-        public Tuple2<String, Integer> map(String s) {
-            return new Tuple2<>(s, 1);
-        }
-    }
-
-    /**
-     * main method that executes the Flink app
-     * https://nightlies.apache.org/flink/flink-docs-release-1.18/docs/dev/datastream/overview/#anatomy-of-a-flink-program
-     *
-     * @param args command-line arguments
-     */
+    /** https://nightlies.apache.org/flink/flink-docs-release-1.18/docs/dev/datastream/overview/#anatomy-of-a-flink-program
+     * @param args command-line arguments  */
     public static void main(String[] args) throws Exception {
         /* STEP 1 - obtain an execution environment (main entry point to building Flink apps) ****/
-
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
         // enable checkpoints every 10.5s (Flink needs to complete checkpoints to finalize writing)
         env.enableCheckpointing(10500);
 
-        /* STEP 2 - load the initial data ********************************************************/
-        // TODO input images
-
+        /* STEP 2 - load the initial data ************************************TODO input images***/
         final ParameterTool params = ParameterTool.fromArgs(args); // input
         env.getConfig().setGlobalJobParameters(params); // make it available in the Flink UI
 
@@ -100,6 +74,7 @@ public class FruitStreaming {
                         .withPartSuffix(".txt")
                         .build();
 
+        // set a sink
         FileSink<Tuple2<String, Integer>> file_sink =
                 FileSink.forRowFormat(
                                 new Path(input_path + "monitoring-files"),
@@ -117,6 +92,7 @@ public class FruitStreaming {
         String username = "user";
         String password = "oranges";
 
+        // set a second sink
         SinkFunction<Tuple2<String, Integer>> database_sink =
             new FruitDatabaseSink(connection_url, username, password);
 
@@ -127,6 +103,5 @@ public class FruitStreaming {
         /* STEP 5 - trigger the program execution ************************************************/
         orange_count.print();
         env.execute("Streaming: oranges monitoring");
-
     }
 }
