@@ -16,6 +16,8 @@ started with Flink. 🙃
 Please keep in mind the following steps when setting up Cygwin. If you're using a different environment, you may need 
 to make some additional configurations. 
 
+## Environment
+
 To begin with, ensure that you've installed the latest Flink distribution, mintty and netcat. Then, navigate to the 
 Cygwin folder and locate the ```.bash_profile``` file in the home directory. Add the two lines provided below to the 
 end of the file and save it:
@@ -34,7 +36,45 @@ taskmanager.resource-id: stream-processing-logs
 ```
 Flink will create a temporary folder under Cygwin with the given name to maintain its state logs as it sets up a cluster.
 
+## Database
+To create the database, you need to make sure that MySQL is installed in your system. If not, follow these instructions 
+before proceeding.
+First, open the Cygwin terminal and navigate to the cygwin-installer directory by typing 
+``cd /cygdrive/c/Users/elea/cygwin-installer`` in the prompt and replace 'elea' with your username.
+Now, install MySQL by running the following command: ``./setup-x86_64.exe --packages mysql,mysql-server --quiet-mode``.
+Once the installation is completed, set up the database by running ``mysql_install_db``. This will initialize the 
+default database.
+
 # Running the Application
+
+To run the app, you must first create database to store the output. We first need to create a database . Start the MySQL 
+server and Log in to MySQL as root, create a new user with privileges to access all databases. Then, log out of MySQL 
+and log back in as the newly created user. Finally, create a new database with appropriate schema (a table named 
+oranges with columns feature and count)
+
+```mysql
+# start the MySQL server
+mysqld_safe & 
+# log into MySQL as root
+mysql -u root
+# create a new db user
+GRANT ALL PRIVILEGES ON *.* TO 'user'@'localhost' IDENTIFIED BY 'oranges';
+# log out of MySQL
+\q
+# log in as the newly created user, and type in the password (oranges)
+mysql -u user -p
+# create a new database
+CREATE DATABASE fruits;
+# create a table inside the database
+USE fruits
+CREATE TABLE oranges
+(
+    feature         VARCHAR(150) NOT NULL,               # feature of the orange (ripe, rotten, etc.)
+    count           INT unsigned NOT NULL,               # number of such oranges
+    PRIMARY KEY     (feature)                            # make the feature the primary key
+);
+```
+
 From the root directory of your UNIX-like system, execute the following commands.
 
 ```shell
@@ -48,9 +88,11 @@ cd ../fruit* && mvn clean package && cd ../flink*
 Some example files are provided in the util folder for monitoring. You now visualize the job on the Flink dashboard 
 on [localhost:8081](http://localhost:8081).
 
-When you are done, stop the cluster with`./bin/stop-cluster.sh`.
+When you are done, stop the cluster with`./bin/stop-cluster.sh` and shut down the MySQL server with 
+``mysqladmin --user root shutdown``.
 
 # Common Issues
+
 If you encounter a `java.nio.file.FileSystemException`, it could mean that the task-executor wasn't stopped properly. 
 To get around this issue, you can use the Resource Monitor on Windows to find out which process is using the file:
 
