@@ -27,7 +27,7 @@ public class FruitDatabaseSink implements SinkFunction<Tuple2<String, Integer>> 
         // if there is nothing to insert we might run into issues, so we continue executing
         try (Connection connection = DriverManager.getConnection(connection_url, username, password)) {
 
-            String sql_query = "INSERT INTO oranges (feature, count) VALUES (?, ?) ON DUPLICATE " +
+            String sql_query = "INSERT INTO pears (feature, count) VALUES (?, ?) ON DUPLICATE " +
                 "KEY UPDATE count = count + ?";
 
             try (PreparedStatement statement = connection.prepareStatement(sql_query)) {

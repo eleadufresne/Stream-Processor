@@ -44,6 +44,8 @@ public class FruitStreaming {
         // monitor the directory given by the "--path" argument or default to "data/"
         String input_path = params.get("path", "data/");
 
+        // System.out.println("Current working directory: " + System.getProperty("user.dir"));
+
         // set a source (DAG)
         FileSource<String> source =
                 FileSource.forRecordStreamFormat(new TextLineInputFormat(), new Path(input_path))
@@ -89,8 +91,8 @@ public class FruitStreaming {
 
         // credentials
         String connection_url = "jdbc:mysql://localhost:3306/fruits";
-        String username = "user";
-        String password = "oranges";
+        String username = "fruit_enthusiast";
+        String password = "Fru!t5";
 
         // set a second sink
         SinkFunction<Tuple2<String, Integer>> database_sink =
@@ -102,6 +104,6 @@ public class FruitStreaming {
 
         /* STEP 5 - trigger the program execution ************************************************/
         orange_count.print();
-        env.execute("Streaming: oranges monitoring");
+        env.execute("Streaming: fruit monitoring");
     }
 }
