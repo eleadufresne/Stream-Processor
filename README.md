@@ -71,7 +71,7 @@ to make some additional configurations.
    Optionally, you may set up an environment variable for this repository. Otherwise replace `$FRUIT_DIR` with the actual 
    path in the following steps.
     ```shell
-    export FRUIT_DIR=mnt/c/projects/fruit-stream-processor
+    export FRUIT_DIR=/mnt/c/projects/fruit-stream-processor
     ```
 2. **Permissions:** Ensure that you have enough permissions to use the repository.
     ```shell
@@ -134,15 +134,17 @@ systemd=true
 # Running the Application
 
 ### Launching the Application
-From the root directory of your UNIX-like system, execute the following commands.
+By default, the job monitors files from ``fruit-dir`` (provided under ``util``) in the working directory. Before 
+proceeding, either place ``fruit-dir`` to your working directory or provide paths as argument. Now, from the root  
+of your UNIX-like system, execute the following commands. 
 
 ```shell
 # start a cluster
 $FLINK_HOME/bin/start-cluster.sh
 # generate a JAR file for the Flink job
 cd $FRUIT_DIR && mvn clean package && cd ~
-# start monitoring the files in the "data" directory
-$FLINK_HOME/bin/flink run $FRUIT_DIR/tar*/fruit*.jar --path ~/data/
+# start monitoring the directory
+$FLINK_HOME/bin/flink run $FRUIT_DIR/tar*/fruit*.jar --input=file:/path/to/input/dir --output=file:/path/to/input/dir --checkpoint=file:/path/to/checkpoint/dir
 ```
 
 ### Accessing the Flink Dashboard

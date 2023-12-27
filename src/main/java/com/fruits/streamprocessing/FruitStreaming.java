@@ -1,7 +1,25 @@
-package com.oranges.streamprocessing;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-import com.oranges.streamprocessing.util.FruitDatabaseSink;
-import com.oranges.streamprocessing.util.Tokenizer;
+package com.fruits.streamprocessing;
+
+import com.fruits.streamprocessing.util.DBSink;
+import com.fruits.streamprocessing.util.TextTokenizer;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FilterFunction;
@@ -34,8 +52,19 @@ public class FruitStreaming {
     public static void main(String[] args) throws Exception {
         /* STEP 1 - obtain an execution environment (main entry point to building Flink apps) ****/
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        System.out.println("System: "  + System.getProperty("os.name"));
-        System.out.println("Config: "  + env.getConfiguration());
+        final String work_dir = System.getProperty("user.dir");
+
+        System.out.println("Working directory: " + System.getProperty("user.dir")); // debug
+
+        /* STEP 2 - load the initial data ************************************TODO input images***/
+        final ParameterTool params = ParameterTool.fromArgs(args); // input
+        env.getConfig().setGlobalJobParameters(params); // make it available in the Flink UI
+
+        // monitor the directory given by the "--path" argument or default to "data/"
+        String default_folder = "file:"+work_dir+"/fruit-dir";
+        String input_dir = params.get("input", default_folder + "/data");
+        String output_dir = params.get("output", default_folder + "/logs");
+        String checkpoint_dir = params.get("checkpoint", default_folder+ "/checkpoints");
 
         // https://nightlies.apache.org/flink/flink-docs-master/docs/dev/datastream/fault-tolerance/checkpointing/#enabling-and-configuring-checkpointing
         // enable checkpoints every 10.5s (Flink needs to complete checkpoints to finalize writing)
@@ -50,20 +79,11 @@ public class FruitStreaming {
         env.getCheckpointConfig().setExternalizedCheckpointCleanup(
             CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
         // sets the checkpoint storage where checkpoint snapshots will be written
-        env.getCheckpointConfig().setCheckpointStorage("file:/home/ecchymose/data/checkpoints");
-
-        /* STEP 2 - load the initial data ************************************TODO input images***/
-        final ParameterTool params = ParameterTool.fromArgs(args); // input
-        env.getConfig().setGlobalJobParameters(params); // make it available in the Flink UI
-
-        // monitor the directory given by the "--path" argument or default to "data/"
-        String input_path = params.get("path", "file:/home/ecchymose/data");
-
-        // System.out.println("Current working directory: " + System.getProperty("user.dir"));
+        env.getCheckpointConfig().setCheckpointStorage(checkpoint_dir);
 
         // set a source (DAG)
         FileSource<String> source =
-            FileSource.forRecordStreamFormat(new TextLineInputFormat(), new Path(input_path))
+            FileSource.forRecordStreamFormat(new TextLineInputFormat(), new Path(input_dir))
                 .monitorContinuously(Duration.ofSeconds(10)) // monitor every 10s
                 .build();
 
@@ -74,10 +94,10 @@ public class FruitStreaming {
         /* STEP 3 - transform the data ***********************************************************/
 
         // filter out everything that is not an orange, and aggregate them by features
-        DataStream<Tuple2<String, Integer>> count = // TODO pipeline of the functions on this
+        DataStream<Tuple2<String, Integer>> count =
             data_stream
                 .filter((FilterFunction<String>) value -> value.endsWith("orange"))
-                .map(new Tokenizer())
+                .map(new TextTokenizer())
                 .keyBy(value -> value.f0)
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(10)))
                 .sum(1); // sums the results that were accumulated over 9s
@@ -94,7 +114,7 @@ public class FruitStreaming {
         // set a sink
         FileSink<Tuple2<String, Integer>> file_sink =
             FileSink.forRowFormat(
-                    new Path(input_path + "monitoring-files"),
+                    new Path(output_dir),
                     new SimpleStringEncoder<Tuple2<String, Integer>>("UTF-8"))
                 .withOutputFileConfig(output_file)
                 .withRollingPolicy(OnCheckpointRollingPolicy.build()) // this is important
@@ -111,11 +131,9 @@ public class FruitStreaming {
 
         // set a second sink
         SinkFunction<Tuple2<String, Integer>> database_sink =
-            new FruitDatabaseSink(connection_url, username, password);
+            new DBSink(connection_url, username, password);
 
         count.addSink(database_sink);
-
-        //orange_count.windowAll(TumblingProcessingTimeWindows.of(Time.seconds(10)));
 
         /* STEP 5 - trigger the program execution ************************************************/
         count.print();
