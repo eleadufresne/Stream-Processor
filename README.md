@@ -66,12 +66,12 @@ to make some additional configurations.
 1. **Environment Variable:** As a first step, let's create an environment variable for the flink installation directory.
   The command should look something like that.
     ```shell
-    export FLINK_HOME=/mnt/c/Projects/Apache/flink-1.15.2
+    export FLINK_HOME=/mnt/c/projects/apache/flink-1.18.0
     ```
    Optionally, you may set up an environment variable for this repository. Otherwise replace `$FRUIT_DIR` with the actual 
    path in the following steps.
     ```shell
-    export FRUIT_DIR=mnt/c/Projects/fruit-stream-processor-master
+    export FRUIT_DIR=mnt/c/projects/fruit-stream-processor
     ```
 2. **Permissions:** Ensure that you have enough permissions to use the repository.
     ```shell
@@ -118,7 +118,18 @@ to make some additional configurations.
         PRIMARY KEY     (feature)               # make the feature the primary key
     );
     ```
-
+   
+5. **[Optional] Faster WSL Network:** Modify your ``.wslconfig`` file so it contains the following lines.
+```editorconfig
+[wsl2]
+nestedVirtualization=true
+memory=32GB
+vmSwitch = LAN
+experimental.networkingMode=mirrored
+localhostforwarding=true
+[boot]
+systemd=true
+```
 
 # Running the Application
 
@@ -131,7 +142,7 @@ $FLINK_HOME/bin/start-cluster.sh
 # generate a JAR file for the Flink job
 cd $FRUIT_DIR && mvn clean package && cd ~
 # start monitoring the files in the "data" directory
-$FLINK_HOME/bin/flink run $FRUIT_DIR/tar*/fruit*.jar --path $FRUIT_DIR/data/
+$FLINK_HOME/bin/flink run $FRUIT_DIR/tar*/fruit*.jar --path ~/data/
 ```
 
 ### Accessing the Flink Dashboard
