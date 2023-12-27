@@ -17,98 +17,95 @@ import javax.imageio.ImageIO;
 public class CircleDetector {
 
 	/**
-	 * Reads the image at inputImagePath, looks through it for circles,
-	 * and writes cropped images containing the circles in outputFolderPath
-	 * @param inputImagePath the target image
-	 * @param outputFolderPath where to output cropped images to
-	 * @param rmin minimum radius of circles to look for in pixels
-	 * @param rmax minimum radius of circles to look for in pixels
+	 * Reads the image at path_to_image, looks through it for circles,
+	 * and writes cropped images containing the circles in cropped_img_dir
+	 * @param path_to_image the target image
+	 * @param cropped_img_dir where to output cropped images to
+	 * @param r_min minimum radius of circles to look for in pixels
+	 * @param r_max minimum radius of circles to look for in pixels
 	 * @param steps number of iterations
 	 * @param threshold number between 0-1, fraction of circle visible to be counted as a detection, for example 0.4 would mean at least 40% of a circle must be visible
 	 */
-	public static void detect(String inputImagePath, String outputFolderPath, int rmin, int rmax, int steps, double threshold) {
-		BufferedImage toCrop = null;
-
-		//read image
+	public static void detect(String path_to_image, String cropped_img_dir, int r_min, int r_max,
+							  int steps, double threshold) {
+		// read the image
+		BufferedImage image_to_crop = null;
 		try {
-			File image = new File(inputImagePath);
-			toCrop = ImageIO.read(image);
+			File image = new File(path_to_image);
+			image_to_crop = ImageIO.read(image);
+		} catch(Exception e) {
+			System.err.println("ERROR: could not read input image: " + e.getMessage());
 		}
 
-		catch(Exception e) {
-			//cannot read inputImage
-			System.out.println("bad input");
-		}
-
-		//find circles
-		List<Circle> points = new ArrayList<Circle>();
-		for (int r = rmin; r < rmax + 1; r++) {
-			for (int t = 0; t < steps; t++) {
+		// search for circles
+		List<Circle> points = new ArrayList<>();
+		for (int r = r_min; r < r_max + 1; r++) {
+			for (int s = 0; s < steps; s++) {
 				points.add(new Circle(r,
-						(int) (r * Math.cos(2.0 * Math.PI * t / steps)),
-						(int) (r * Math.sin(2.0 * Math.PI * t / steps))));
+						(int) (r * Math.cos(2.0 * Math.PI * s / steps)),
+						(int) (r * Math.sin(2.0 * Math.PI * s / steps))));
 			}
 		}
 
-		//compute the coordinates of the center of all the circles that pass by that point
-		//every time we find a pixel belonging to a circle of a given position and radius we increment a counter
-		//when later divided by steps, this is how much of each circle we see
-		Hashtable<Circle, Integer> acc = new Hashtable<Circle, Integer>();
-		for (Coordinates point : CannyEdgeDetector.detect(toCrop)) {
+		// compute the coordinates of the center of all the circles that pass by that point
+		// every time we find a pixel belonging to a circle of a given position and radius we
+		// increment a counter when later divided by steps, this is how much of each circle we see
+		Hashtable<Circle, Integer> accumulator = new Hashtable<>();
+		for (Coordinates point : CannyEdgeDetector.detect(image_to_crop)) {
 			int x = point.x;
 			int y = point.y;
-			for (Circle p : points) {
-				int a = x - p.y;
-				int b = y - p.r;
-				Circle forAcc = new Circle(a, b, p.x);
-				Integer num = acc.get(forAcc);
-				if (num == null) {
-					acc.put(forAcc, 1);
-				}
-				else {
-					acc.put(forAcc, ++num);
-					//System.out.println(num);
-				}
+			for (Circle d : points) {
+				int a = x - d.y;
+				int b = y - d.r;
+				Circle for_accumulator = new Circle(a, b, d.x);
+				Integer within_threshold = accumulator.get(for_accumulator);
+				if (within_threshold == null)
+					accumulator.put(for_accumulator, 1);
+				else
+					accumulator.put(for_accumulator, ++within_threshold);
 			}
 		}
 
-		//filter out all circles that are too incomplete (below threshold) or that overlap with already detected circles
+		// filter out all circles that are too incomplete (below threshold) or that overlap with
+		// already detected circles
 	    List<Circle> circles = new ArrayList<>();
-	    for (Circle c : Collections.list(acc.keys())) {
-	        if ((double)acc.get(c) / steps >= threshold) {
+	    for (Circle circle : Collections.list(accumulator.keys())) {
+	        if ((double) accumulator.get(circle) / steps >= threshold) {
 	            boolean overlaps = false;
-	            for (Circle existingCircle : circles) {
-	                double distance = Math.sqrt(Math.pow(existingCircle.x - c.x, 2) + Math.pow(existingCircle.y - c.y, 2));
-	                if (distance < existingCircle.r) {
+	            for (Circle existing_circle : circles) {
+	                double distance =
+							Math.sqrt(Math.pow(existing_circle.x - circle.x, 2)
+							+ Math.pow(existing_circle.y - circle.y, 2));
+	                if (distance < existing_circle.r) {
 	                    overlaps = true;
 	                    break;
 	                }
-	            }
-	            if (!overlaps) {
-	                circles.add(c);
-	                System.out.println(acc.get(c) / (double) steps + " " + c.x + " " + c.y + " " + c.r);
+	            } if (!overlaps) {
+	                circles.add(circle);
+	                System.out.println(accumulator.get(circle) / (double) steps + " " + circle.x
+							+ " " + circle.y + " " + circle.r);
 	            }
 	        }
 	    }
 
 	    //crop all detected circles into their own images and write to disk
-	    int imageIndex = 0;
-	    for (Circle c : circles) {
-			File output1file = new File(outputFolderPath+"\\testorange"+imageIndex+".png");
-			int x0 = c.x - c.r;
-			int x1 = c.x + c.r;
-			int y0 = c.y - c.r;
-			int y1 = c.y + c.r;
-			x0 = CannyEdgeDetector.clip(x0, 0, toCrop.getWidth());
-			x1 = CannyEdgeDetector.clip(x1, 0, toCrop.getWidth());
-			y0 = CannyEdgeDetector.clip(y0, 0, toCrop.getHeight());
-			y1 = CannyEdgeDetector.clip(y1, 0, toCrop.getHeight());
+	    int i = 0;
+	    for (Circle circle : circles) {
+			File output1file = new File(cropped_img_dir+"\\testorange"+i+".png");
+			int x0 = circle.x - circle.r;
+			int x1 = circle.x + circle.r;
+			int y0 = circle.y - circle.r;
+			int y1 = circle.y + circle.r;
+			x0 = CannyEdgeDetector.clip(x0, 0, image_to_crop.getWidth());
+			x1 = CannyEdgeDetector.clip(x1, 0, image_to_crop.getWidth());
+			y0 = CannyEdgeDetector.clip(y0, 0, image_to_crop.getHeight());
+			y1 = CannyEdgeDetector.clip(y1, 0, image_to_crop.getHeight());
 		    try {
-		    	BufferedImage cropped = toCrop.getSubimage(x0, y0, x1-x0, y1-y0);
+		    	BufferedImage cropped = image_to_crop.getSubimage(x0, y0, x1-x0, y1-y0);
 				ImageIO.write(cropped, "png", output1file);
-				imageIndex++;
+				i++;
 			} catch (IOException e) {
-				e.printStackTrace();
+				System.err.println("ERROR: could not write to output image: " + e.getMessage());
 			}
 	    }
 	}
@@ -116,35 +113,39 @@ public class CircleDetector {
 	private static class CannyEdgeDetector {
 
 		//find edges that can belong to circles
-		public static Coordinates[] detect (BufferedImage inputImage) {
-			BufferedImage grayscale = CannyEdgeDetector.grayscale(inputImage);
+		public static Coordinates[] detect (BufferedImage input_image) {
+			BufferedImage grayscale = CannyEdgeDetector.grayscale(input_image);
 			BufferedImage blurred = CannyEdgeDetector.blur(grayscale);
-			double[][][] gradientAndDirection = gradient(blurred);
-			filter(gradientAndDirection[0], gradientAndDirection[1], blurred);
-			Coordinates[] keep = keep(gradientAndDirection[0], blurred, 20, 25);
-			return keep;
+			double[][][] gradient_and_direction = gradient(blurred);
+			filter(gradient_and_direction[0], gradient_and_direction[1], blurred);
+			return keep(gradient_and_direction[0], blurred, 20, 25);
 		}
 
-		//averages out all colors into a grayscale image
-		private static BufferedImage grayscale (BufferedImage inputImage) {
-			BufferedImage outputImage = new BufferedImage(inputImage.getWidth(), inputImage.getHeight(), BufferedImage.TYPE_INT_RGB);
-			for (int x = 0; x < inputImage.getWidth(); x++) {
-				for (int y = 0; y < inputImage.getHeight(); y++) {
-					Color oldColor = new Color(inputImage.getRGB(x, y));
-					int intensity = (oldColor.getRed()+oldColor.getGreen()+oldColor.getBlue()) / 3;
-					Color newColor = new Color(intensity, intensity, intensity);
-					outputImage.setRGB(x, y, newColor.getRGB());
+		//averages out all colours into a grayscale image
+		private static BufferedImage grayscale (BufferedImage input_image) {
+			BufferedImage output_image = new BufferedImage(input_image.getWidth(),
+					input_image.getHeight(), BufferedImage.TYPE_INT_RGB);
+			for (int x = 0; x < input_image.getWidth(); x++) {
+				for (int y = 0; y < input_image.getHeight(); y++) {
+					Color old_colour = new Color(input_image.getRGB(x, y));
+					int intensity =
+							(old_colour.getRed() + old_colour.getGreen() + old_colour.getBlue()) /3;
+					Color new_colour = new Color(intensity, intensity, intensity);
+					output_image.setRGB(x, y, new_colour.getRGB());
 				}
 			}
 			//write to file
-			return outputImage;
+			return output_image;
 		}
 
 		//gaussian blur image to remove noise, assumes grayscale input
-		private static BufferedImage blur (BufferedImage inputImage) {
-			BufferedImage outputImage = new BufferedImage(inputImage.getWidth(), inputImage.getHeight(), BufferedImage.TYPE_INT_RGB);
+		private static BufferedImage blur (BufferedImage input_image) {
+			BufferedImage output_image = new BufferedImage(
+					input_image.getWidth(),
+					input_image.getHeight(),
+					BufferedImage.TYPE_INT_RGB);
 
-			//gaussian kernel
+			// gaussian kernel
 			double[][] kernel = {
 				{1.0 / 256,  4.0 / 256,  6.0 / 256,  4.0 / 256, 1.0 / 256},
 				{4.0 / 256, 16.0 / 256, 24.0 / 256, 16.0 / 256, 4.0 / 256},
@@ -153,31 +154,31 @@ public class CircleDetector {
 				{1.0 / 256,  4.0 / 256,  6.0 / 256,  4.0 / 256, 1.0 / 256}
 			};
 
-			//middle of the kernel
+			// middle of the kernel
 			int offset = kernel.length / 2;
 
-			for (int x = 0; x < inputImage.getWidth(); x++) {
-				for (int y = 0; y < inputImage.getHeight(); y++) {
+			for (int x = 0; x < input_image.getWidth(); x++) {
+				for (int y = 0; y < input_image.getHeight(); y++) {
 					double acc = 0;
 					for (int a = 0; a < kernel.length; a++) {
 						for (int b = 0; b < kernel.length; b++) {
-							int xn = clip(x + a - offset, 0, inputImage.getWidth() - 1);
-							int yn = clip(y + b - offset, 0, inputImage.getHeight() - 1);
-							int color = new Color(inputImage.getRGB(xn, yn)).getRed();
-							acc += color * kernel[a][b];
+							int xn = clip(x + a - offset, 0, input_image.getWidth() - 1);
+							int yn = clip(y + b - offset, 0, input_image.getHeight() - 1);
+							int colour = new Color(input_image.getRGB(xn, yn)).getRed();
+							acc += colour * kernel[a][b];
 						}
 					}
-					Color newColor = new Color((int) acc, (int) acc, (int) acc);
-					outputImage.setRGB(x, y, newColor.getRGB());
+					Color new_colour = new Color((int) acc, (int) acc, (int) acc);
+					output_image.setRGB(x, y, new_colour.getRGB());
 				}
 			}
-			return outputImage;
+			return output_image;
 		}
 
 		//calculate gradient and direction for edges, assumes grayscale input
-		private static double[][][] gradient (BufferedImage inputImage) {
-			int width = inputImage.getWidth();
-			int height = inputImage.getHeight();
+		private static double[][][] gradient (BufferedImage input_image) {
+			int width = input_image.getWidth();
+			int height = input_image.getHeight();
 			double[][] gradient = new double[width][height];
 			double[][] direction = new double[width][height];
 
@@ -185,8 +186,8 @@ public class CircleDetector {
 				for (int y = 0; y < height; y++) {
 					if (0 < x && x < width -1 && 0 < y && y < height - 1) {
 						//red has no special significance, this just retrieves the pixel intensity provided input is grayscale
-						int magx = new Color(inputImage.getRGB(x + 1, y)).getRed() - new Color(inputImage.getRGB(x - 1, y)).getRed();
-						int magy = new Color(inputImage.getRGB(x, y+1)).getRed() - new Color(inputImage.getRGB(x, y - 1)).getRed();
+						int magx = new Color(input_image.getRGB(x + 1, y)).getRed() - new Color(input_image.getRGB(x - 1, y)).getRed();
+						int magy = new Color(input_image.getRGB(x, y+1)).getRed() - new Color(input_image.getRGB(x, y - 1)).getRed();
 						gradient[x][y] = Math.sqrt(Math.pow(magx, 2) + Math.pow(magy, 2));
 						direction[x][y] = Math.atan2(magy, magx);
 					}
@@ -196,9 +197,9 @@ public class CircleDetector {
 		}
 
 		//filters out all non-maximum gradients by setting them to 0
-		private static void filter (double[][] gradient, double[][] direction, BufferedImage inputImage) {
-			for (int x = 1; x < inputImage.getWidth() - 1; x++) {
-				for (int y = 1; y < inputImage.getHeight() - 1; y++) {
+		private static void filter (double[][] gradient, double[][] direction, BufferedImage input_image) {
+			for (int x = 1; x < input_image.getWidth() - 1; x++) {
+				for (int y = 1; y < input_image.getHeight() - 1; y++) {
 					double angle = direction[x][y] >= 0 ? direction[x][y] : direction[x][y] + Math.PI;
 					double rangle = Math.round(angle / (Math.PI / 4));
 					double mag = gradient[x][y];
@@ -213,10 +214,10 @@ public class CircleDetector {
 		}
 
 		//keep strong edges and weak edges close to strong pixels
-		private static Coordinates[] keep (double[][] gradient, BufferedImage inputImage, int low, int high) {
+		private static Coordinates[] keep (double[][] gradient, BufferedImage input_image, int low, int high) {
 			//keep strong edges
-			int width = inputImage.getWidth();
-			int height = inputImage.getHeight();
+			int width = input_image.getWidth();
+			int height = input_image.getHeight();
 			Set<Coordinates> keep = new HashSet<Coordinates>();
 			for (int x = 0; x < width; x++) {
 				for (int y = 0; y < height; y++) {
@@ -226,48 +227,45 @@ public class CircleDetector {
 				}
 			}
 
-			//keep weak edges close to strong
-			Set<Coordinates> lastiter = keep;
-			while (lastiter.size() > 0) {
-				Set<Coordinates> newkeep = new HashSet<Coordinates>();
-				for (Coordinates c : lastiter) {
+			// keep weak edges close to strong
+			Set<Coordinates> last_iter = keep;
+			while (last_iter.size() > 0) {
+				Set<Coordinates> new_keep = new HashSet<Coordinates>();
+				for (Coordinates c : last_iter) {
 					int x = c.x;
 					int y = c.y;
 					for (int a :  new int[] {-1, 0, 1}) {
 						for (int b :  new int[] {-1, 0, 1}) {
-							if (gradient[x + a][y + b] > low && !keep.contains(new Coordinates(x+a, y+b))) {
-								newkeep.add(new Coordinates(x+a,y+b));
+							if (gradient[x + a][y + b] > low
+									&& !keep.contains(new Coordinates(x+a, y+b))) {
+								new_keep.add(new Coordinates(x+a,y+b));
 							}
 						}
 					}
 				}
-				keep.addAll(newkeep);
-				lastiter = newkeep;
+				keep.addAll(new_keep);
+				last_iter = new_keep;
 			}
-			Coordinates[] toReturn = new Coordinates[keep.size()];
+			Coordinates[] to_return = new Coordinates[keep.size()];
 			Iterator<Coordinates> iter = keep.iterator();
-			int index = 0;
+			int i = 0;
 			while (iter.hasNext()) {
-				toReturn[index] = iter.next();
-				index++;
+				to_return[i] = iter.next();
+				i++;
 			}
-			return toReturn;
+			return to_return;
 		}
 
-		//helper method used in blur() and detect() to place bounds on coordinates
-		public static int clip(int x, int l, int u) {
+		// helper method used in blur() and detect() to place bounds on coordinates
+		private static int clip(int x, int l, int u) {
 			if (x < l) return l;
-			if (x > u) return u;
-			return x;
+			return Math.min(x, u);
 		}
-
-
 	}
 
 	//helper class representing a point at (x, y)
 	private static class Coordinates {
-		int x;
-		int y;
+		int x, y;
 		Coordinates(int x, int y){
 			this.x = x;
 			this.y = y;
@@ -291,9 +289,7 @@ public class CircleDetector {
 	//helper class representing a circle at (x,y) with radius r
 	//used as general 3-tuple in List<Circle> points
 	private static class Circle {
-		int x;
-		int y;
-		int r;
+		int x, y, r;
 		public Circle(int x, int y, int r) {
 			this.x = x;
 			this.y = y;
