@@ -10,8 +10,9 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-/** A simple database sink function for the {@link FruitStreaming} streaming job.
- * @author Éléa Dufresne */
+/** Database sink function for {@link FruitStreaming}
+ *  @author Éléa Dufresne
+ */
 public class DBSink implements SinkFunction<Tuple2<String, Integer>> {
 
     /* credentials to connect to the database */

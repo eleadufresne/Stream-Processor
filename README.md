@@ -120,16 +120,16 @@ to make some additional configurations.
     ```
    
 5. **[Optional] Faster WSL Network:** Modify your ``.wslconfig`` file so it contains the following lines.
-```editorconfig
-[wsl2]
-nestedVirtualization=true
-memory=32GB
-vmSwitch = LAN
-experimental.networkingMode=mirrored
-localhostforwarding=true
-[boot]
-systemd=true
-```
+    ```editorconfig
+    [wsl2]
+    nestedVirtualization=true
+    memory=32GB
+    vmSwitch = LAN
+    experimental.networkingMode=mirrored
+    localhostforwarding=true
+    [boot]
+    systemd=true
+    ```
 
 # Running the Application
 
@@ -144,8 +144,9 @@ $FLINK_HOME/bin/start-cluster.sh
 # generate a JAR file for the Flink job
 cd $FRUIT_DIR && mvn clean package && cd ~
 # start monitoring the directory
-$FLINK_HOME/bin/flink run $FRUIT_DIR/tar*/fruit*.jar --input=file:/path/to/input/dir --output=file:/path/to/input/dir --checkpoint=file:/path/to/checkpoint/dir
+$FLINK_HOME/bin/flink run $FRUIT_DIR/tar*/fruit*.jar <optional-arguments>
 ```
+Run ``$FLINK_HOME/bin/flink run $FRUIT_DIR/tar*/fruit*.jar --help`` to get the list of arguments.
 
 ### Accessing the Flink Dashboard
 To access the Flink dashboard:
