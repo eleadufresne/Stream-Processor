@@ -17,10 +17,8 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.flink:flink-streaming-java:1.18.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.flink:flink-core:1.18.0" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.flink:flink-annotations:1.18.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.flink:flink-metrics-core:1.18.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.flink:flink-shaded-asm-9:9.5-17.0" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.flink:flink-shaded-jackson:2.14.2-17.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.commons:commons-lang3:3.12.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.commons:commons-text:1.10.0" level="project" />
     <orderEntry type="library" name="Maven: com.esotericsoftware.kryo:kryo:2.24.0" level="project" />
@@ -82,5 +80,41 @@
     <orderEntry type="library" scope="RUNTIME" name="Maven: org.apache.logging.log4j:log4j-slf4j-impl:2.17.1" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Maven: org.apache.logging.log4j:log4j-api:2.17.1" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Maven: org.apache.logging.log4j:log4j-core:2.17.1" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apache.flink:flink-test-utils:1.18.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apache.flink:flink-test-utils-junit:1.18.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.junit.vintage:junit-vintage-engine:5.9.1" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.junit.platform:junit-platform-engine:1.9.1" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: junit:junit:4.13.2" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.hamcrest:hamcrest-core:1.3" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apiguardian:apiguardian-api:1.1.2" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.testcontainers:testcontainers:1.18.3" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.rnorth.duct-tape:duct-tape:1.0.8" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.jetbrains:annotations:17.0.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: com.github.docker-java:docker-java-api:3.3.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: com.github.docker-java:docker-java-transport-zerodep:3.3.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: com.github.docker-java:docker-java-transport:3.3.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: net.java.dev.jna:jna:5.12.1" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apache.flink:flink-runtime:test-jar:tests:1.18.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apache.flink:flink-core:test-jar:tests:1.18.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apache.flink:flink-rpc-akka-loader:test-jar:tests:1.18.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.junit.jupiter:junit-jupiter:5.9.1" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.junit.jupiter:junit-jupiter-api:5.9.1" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.opentest4j:opentest4j:1.2.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.junit.platform:junit-platform-commons:1.9.1" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.junit.jupiter:junit-jupiter-params:5.9.1" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.junit.jupiter:junit-jupiter-engine:5.9.1" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.assertj:assertj-core:3.23.1" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: net.bytebuddy:byte-buddy:1.12.10" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apache.flink:flink-streaming-java:test-jar:tests:1.18.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apache.flink:flink-statebackend-rocksdb:1.18.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: com.ververica:frocksdbjni:6.20.3-ververica-2.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apache.flink:flink-statebackend-changelog:1.18.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apache.flink:flink-statebackend-common:1.18.0" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.apache.flink:flink-dstl-dfs:1.18.0" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-annotations:1.18.0" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:statefun-flink-common:3.2.0" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:statefun-sdk-embedded:3.2.0" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-shaded-jackson:2.12.4-14.0" level="project" />
+    <orderEntry type="library" name="Maven: com.google.auto.service:auto-service-annotations:1.0-rc6" level="project" />
   </component>
 </module>

@@ -18,15 +18,13 @@
 
 package com.fruits.streamprocessing;
 
-import com.fruits.streamprocessing.util.CircleDetector;
 import com.fruits.streamprocessing.util.DBSink;
+import com.fruits.streamprocessing.util.ExecutionMode;
+import com.fruits.streamprocessing.util.StreamProcessor;
+import com.fruits.streamprocessing.util.StreamProcessorFactory;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.functions.FilterFunction;
-import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringEncoder;
-import org.apache.flink.api.common.typeinfo.TypeHint;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.connector.file.sink.FileSink;
@@ -39,12 +37,10 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.sink.filesystem.OutputFileConfig;
 import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.OnCheckpointRollingPolicy;
-import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
-import org.apache.flink.streaming.api.windowing.time.Time;
-import org.apache.flink.util.Collector;
 
 import java.time.Duration;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.HashMap;
+import java.util.Map;
 
 /** Flink-based data processing app that reads files from a directory every 10s, filters and counts
  *  different types of oranges, and prints the result.
@@ -53,120 +49,163 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class FruitStreaming {
 
+    private final StreamExecutionEnvironment environment;
+    private final Map<String, String> paths = new HashMap<>();
+    private final Map<String, String> db = new HashMap<>();
+    private DataStream<String> input_stream;
+    private DataStream<Tuple2<String, Integer>> output_stream;
+
+    private ExecutionMode execution_mode;
+    private StreamProcessor dataProcessor; // Strategy pattern for different processing modes
+
+    /** Constructor.
+     *
+     * @param args command line arguments
+     */
+    public FruitStreaming(String[] args) {
+        System.out.println("Setting up execution environment...");
+        this.environment = StreamExecutionEnvironment.getExecutionEnvironment();
+
+        // get the command line args and make them available in the Flink UI
+        final ParameterTool params = ParameterTool.fromArgs(args);
+        environment.getConfig().setGlobalJobParameters(params);
+
+        // set the execution mode and data processing strategy
+        this.execution_mode = ExecutionMode.valueOf(params.get("mode", "IMAGES"));
+        this.dataProcessor = StreamProcessorFactory.getProcessor(execution_mode, paths);
+        System.out.println("Monitoring " + this.execution_mode);
+
+        // set the directory paths
+        System.out.println("Setting up directories...");
+        this.paths.put("work", System.getProperty("user.dir"));
+        this.paths.put("default", "file:" + paths.get("work") + "/fruit-dir");
+        this.paths.put("input", params.get("input", paths.get("default") + "/data"));
+        this.paths.put("output", params.get("output", paths.get("default") + "/logs"));
+        this.paths.put(
+                "checkpoints", params.get("checkpoint", paths.get("default") + "/checkpoints"));
+
+        this.paths.forEach((key, value) -> System.out.println(key + " dir: " + value));
+
+        // set the DB credentials
+        System.out.println("Setting up database credentials...");
+        this.db.put("url", params.get("url", "jdbc:mysql://localhost:3306/fruits"));
+        this.db.put("user", params.get("user", "fruit_enthusiast"));
+        this.db.put("password", params.get("password", "Fru!t5"));
+
+        this.db.forEach((key, value) -> System.out.println(key + ": " + value));
+    }
+
+    /** Configure checkpoint rules and enable checkpointing. */
+    private void checkpointing() {
+        // enable checkpoints every 10.5s (Flink needs to complete checkpoints to finalize writing)
+        environment.enableCheckpointing(1000);
+        // make sure 500 ms of progress happen between checkpoints
+        environment.getCheckpointConfig().setMinPauseBetweenCheckpoints(500);
+        // only two consecutive checkpoint failures are tolerated
+        environment.getCheckpointConfig().setTolerableCheckpointFailureNumber(2);
+        // allow only one checkpoint to be in progress at the same time
+        environment.getCheckpointConfig().setMaxConcurrentCheckpoints(1);
+        // enable externalized checkpoints which are retained after job cancellation
+        environment
+                .getCheckpointConfig()
+                .setExternalizedCheckpointCleanup(
+                        CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
+        // sets the checkpoint storage where checkpoint snapshots will be written
+        environment.getCheckpointConfig().setCheckpointStorage(this.paths.get("checkpoints"));
+    }
+
+    /** Load the input data and put it into a stream. */
+    private void load_data() {
+        // set a source directory to be monitored every 10s
+        FileSource<String> source =
+                FileSource.forRecordStreamFormat(
+                                new TextLineInputFormat(), new Path(paths.get("input")))
+                        .monitorContinuously(Duration.ofSeconds(10)) // monitor every 10s
+                        .build();
+
+        // save data to a stream
+        this.input_stream = environment
+            .fromSource(source, WatermarkStrategy.noWatermarks(),"Source: directory");
+    }
+
+    /** Apply transformations on the input stream to count all fruits captured in 10-second intervals. */
+    private void process() {
+        // delegate the processing to the strategy implementation
+        this.output_stream = dataProcessor.process(input_stream);
+    }
+
+    /** Sink to a log file containing results from this 10-second interval. */
+    private void sink_to_log_file() {
+        OutputFileConfig output_file =
+                OutputFileConfig.builder()
+                        .withPartPrefix("monitoring-data")
+                        .withPartSuffix(".txt")
+                        .build();
+
+        FileSink<Tuple2<String, Integer>> file_sink =
+                FileSink.forRowFormat(
+                                new Path(paths.get("output")),
+                                new SimpleStringEncoder<Tuple2<String, Integer>>("UTF-8"))
+                        .withOutputFileConfig(output_file)
+                        .withRollingPolicy(OnCheckpointRollingPolicy.build()) // this is important
+                        .build();
+
+        output_stream.sinkTo(file_sink).name("Sink: log file");
+    }
+
+    /** Sink to a database and update it with the results from this 10-second interval. */
+    private void sink_to_db() {
+        SinkFunction<Tuple2<String, Integer>> database_sink =
+                new DBSink(db.get("url"), db.get("user"), db.get("password"));
+        output_stream.addSink(database_sink).name("Sink: database");
+    }
+
+    /** Triggers the job. */
+    private void monitor() throws Exception {
+        this.environment.execute("Stream Processing: fruit monitoring");
+    }
+
     /** Main method for the windows stream processing app.
      * @see <a href="https://nightlies.apache.org/flink/flink-docs-release-1.18/docs/dev/datastream/overview/#anatomy-of-a-flink-program">...</a>
      * @param args command-line arguments
      */
     public static void main(String[] args) throws Exception {
-        /* STEP 1 - obtain an execution environment (main entry point to building Flink apps) ****/
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        final String work_dir = System.getProperty("user.dir");
-        System.out.println("Working directory: " + work_dir); // debug
+        // print info on the arguments instead of starting the app
+        if (args.length >= 1 && "--help".equals(args[0])) {
+            help();
+            return;
+        }
 
+        // STEP 1 - obtain an execution environment (main entry point to building Flink apps)
+        FruitStreaming job = new FruitStreaming(args);
 
+        // STEP 2 - load the initial data
+        job.checkpointing();
+        job.load_data();
 
-        /* STEP 2 - load the initial data ********************************************************/
-        final ParameterTool params = ParameterTool.fromArgs(args); // input
-        env.getConfig().setGlobalJobParameters(params); // make it available in the Flink UI
+        // STEP 3 - transform the data
+        job.process();
 
-        // monitor the directory given by the "--path" argument or default to "data/"
-        String default_folder = "file:"+work_dir+"/fruit-dir";
-        String input_dir = params.get("input", default_folder + "/data");
-        String output_dir = params.get("output", default_folder + "/logs");
-        String checkpoint_dir = params.get("checkpoint", default_folder+ "/checkpoints");
+        // STEP 4 - store the results
+        job.sink_to_log_file();
+        job.sink_to_db();
 
-        /* CHECKPOINTS ***************************************************************************/
-
-        // enable checkpoints every 10.5s (Flink needs to complete checkpoints to finalize writing)
-        env.enableCheckpointing(1000);
-        // make sure 500 ms of progress happen between checkpoints
-        env.getCheckpointConfig().setMinPauseBetweenCheckpoints(500);
-        // only two consecutive checkpoint failures are tolerated
-        env.getCheckpointConfig().setTolerableCheckpointFailureNumber(2);
-        // allow only one checkpoint to be in progress at the same time
-        env.getCheckpointConfig().setMaxConcurrentCheckpoints(1);
-        // enable externalized checkpoints which are retained after job cancellation
-        env.getCheckpointConfig().setExternalizedCheckpointCleanup(
-            CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
-        // sets the checkpoint storage where checkpoint snapshots will be written
-        env.getCheckpointConfig().setCheckpointStorage(checkpoint_dir);
-
-        // set a source directory to be monitored
-        FileSource<String> source =
-            FileSource.forRecordStreamFormat(new TextLineInputFormat(), new Path(input_dir))
-                .monitorContinuously(Duration.ofSeconds(10)) // monitor every 10s
-                .build();
-
-        // save data to a stream
-        DataStream<String> data_stream = env
-            .fromSource(source, WatermarkStrategy.noWatermarks(), "Source: directory");
-
-        /* STEP 3 - transform the data ***********************************************************/
-
-        // count the circles (placeholder for oranges) in this window's images
-        String path_to_images_prefix = work_dir + "/fruit-dir/data/images/";
-        String path_to_filtered_images = path_to_images_prefix + "filtered-images/";
-        AtomicInteger i = new AtomicInteger();
-
-        DataStream<Tuple2<String, Integer>> count = data_stream
-                .filter((FilterFunction<String>) value -> value.endsWith(".png") || value.endsWith(".jpg"))
-                .name("Filter: PNG and JPG")
-                .flatMap((String image, Collector<Tuple2<String, Integer>> out) -> {
-                    if(image.isEmpty()) return;
-                    String fruit_type = image.substring(0, image.indexOf('_')); // "orange_12" -> "orange"
-                    int num_circles = CircleDetector.detect( // detect + crop
-                        path_to_images_prefix + image,
-                        path_to_filtered_images + fruit_type + "_" + i.getAndIncrement(),
-                        100, 0.4);
-                    out.collect(new Tuple2<>(fruit_type, num_circles)); // save the curr count
-                }) // provide type information so the compiler stops yelling at me
-                .returns(TypeInformation.of(new TypeHint<Tuple2<String, Integer>>() {}))
-                .name("FlatMap: detect and crop")
-                // group by the first value (i.e. the fruit type)
-                .keyBy(value -> value.f0)
-                // collect over 10s
-                .window(TumblingProcessingTimeWindows.of(Time.seconds(10)))
-                // sum the results
-                .sum(1)
-                .name("Aggregate: group fruit types over 10s");
-
-        /* STEP 4 - store the results ************************************************************/
-
-        // SINK to a text file
-        OutputFileConfig output_file = OutputFileConfig.builder()
-                .withPartPrefix("monitoring-data")
-                .withPartSuffix(".txt")
-                .build();
-
-        FileSink<Tuple2<String, Integer>> file_sink = FileSink.forRowFormat(
-                    new Path(output_dir),
-                    new SimpleStringEncoder<Tuple2<String, Integer>>("UTF-8"))
-                .withOutputFileConfig(output_file)
-                .withRollingPolicy(OnCheckpointRollingPolicy.build()) // this is important
-                .build();
-
-        count.sinkTo(file_sink).name("Sink: log file");
-
-        // SINK to a database
-        SinkFunction<Tuple2<String, Integer>> database_sink =
-            new DBSink("jdbc:mysql://localhost:3306/fruits", "fruit_enthusiast", "Fru!t5");
-
-        count.addSink(database_sink).name("Sink: database");
-
-        /* STEP 5 - trigger the program execution ************************************************/
-        count.print();
-        env.execute("Stream Processing: fruit monitoring");
+        // STEP 5 - trigger the program execution
+        job.monitor();
 
         // TODO Have a script that can execute all the experiments in your project.
     }
 
-    /** (helper) MapFunction takes a string and maps it to a tuple of string and integer */
-    private static class TextTokenizer implements MapFunction<String, Tuple2<String, Integer>> {
-        /** @param s input string to be mapped
-         *  @return a Tuple2 containing the input string paired with the number 1 */
-        @Override
-        public Tuple2<String, Integer> map(String s) {
-            return new Tuple2<>(s, 1);
-        }
+    /** Print help information for the command line arguments. */
+    private static void help() {
+        System.out.println("\n*** Fruit monitoring job usage *******************************************************************\n\n"
+                        + "  --mode [TEXT|IMAGES]: execution mode of the application; default is IMAGES.\n"
+                        + "  --input [path]: path to the input directory; default is {work_dir}/fruit-dir/data\n"
+                        + "  --output [path]: path to the output directory; default is {work_dir}/fruit-dir/logs\n"
+                        + "  --checkpoint [path]: path for checkpoint data; default is {work_dir}/fruit-dir/checkpoints\n"
+                        + "  --url [database URL]: URL for database connection; default is jdbc:mysql://localhost:3306/fruits\n"
+                        + "  --user [database user]: database username; default is fruit_enthusiast\n"
+                        + "  --password [database password]: database password; default is Fru!t5\n\n"
+                        + "***************************************************************************************************\n");
     }
 }
