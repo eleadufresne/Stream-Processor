@@ -14,28 +14,51 @@ import java.util.Set;
 
 import javax.imageio.ImageIO;
 
+/** Java adaptation of the tutorial "How to Detect Circles in Images"
+ *  https://www.codingame.com/playgrounds/38470/how-to-detect-circles-in-images
+ *
+ **** MULTISTEP CIRCLE DETECTOR *******************************************************************
+ * 	STEP 1. Sobel edge detection
+ * 	STEP 2. Canny denoising:
+ *			- Gaussian filter
+ *			- Compute image gradient
+ *			- Non-maximum suppression
+ *			- Edge tracking
+ * 	STEP 3. Circle Detection using Circle Hough Transform
+ **************************************************************************************************
+ *
+ * @author Éléa Dufresne
+ */
 public class CircleDetector {
-
 	/**
 	 * Reads the image at path_to_image, looks through it for circles,
-	 * and writes cropped images containing the circles in cropped_img_dir
+	 * and writes cropped images containing the circles in path_to_filtered_image
 	 * @param path_to_image the target image
-	 * @param cropped_img_dir where to output cropped images to
+	 * @param path_to_filtered_image where to output cropped images to
 	 * @param r_min minimum radius of circles to look for in pixels
 	 * @param r_max minimum radius of circles to look for in pixels
 	 * @param steps number of iterations
 	 * @param threshold number between 0-1, fraction of circle visible to be counted as a detection, for example 0.4 would mean at least 40% of a circle must be visible
+	 * @return number of circles detected
 	 */
-	public static void detect(String path_to_image, String cropped_img_dir, int r_min, int r_max,
-							  int steps, double threshold) {
+	public static int detect(String path_to_image, String path_to_filtered_image, int steps, double threshold) {
 		// read the image
-		BufferedImage image_to_crop = null;
+		BufferedImage image_to_crop;
 		try {
 			File image = new File(path_to_image);
 			image_to_crop = ImageIO.read(image);
 		} catch(Exception e) {
-			System.err.println("ERROR: could not read input image: " + e.getMessage());
+			System.err.println("ERROR: could not read from "+ path_to_image +" ("+ e.getMessage() +")");
+			return 0;
 		}
+
+		//find circles
+		int height = image_to_crop.getHeight(); // 200
+		int width = image_to_crop.getWidth(); // 300
+		int r_max = Math.min(height, width) / 10; // 22
+		int r_min = Math.max(height, width) / 20; // 15
+
+		// System.out.println("image "+path_to_image+" with h=" +height +"and w="+width);
 
 		// search for circles
 		List<Circle> points = new ArrayList<>();
@@ -82,8 +105,8 @@ public class CircleDetector {
 	                }
 	            } if (!overlaps) {
 	                circles.add(circle);
-	                System.out.println(accumulator.get(circle) / (double) steps + " " + circle.x
-							+ " " + circle.y + " " + circle.r);
+//	                System.out.println(accumulator.get(circle) / (double) steps + " " + circle.x
+//							+ " " + circle.y + " " + circle.r);
 	            }
 	        }
 	    }
@@ -91,7 +114,7 @@ public class CircleDetector {
 	    //crop all detected circles into their own images and write to disk
 	    int i = 0;
 	    for (Circle circle : circles) {
-			File output1file = new File(cropped_img_dir+"\\testorange"+i+".png");
+			File file = new File(path_to_filtered_image+"_"+i+".png");
 			int x0 = circle.x - circle.r;
 			int x1 = circle.x + circle.r;
 			int y0 = circle.y - circle.r;
@@ -101,13 +124,16 @@ public class CircleDetector {
 			y0 = CannyEdgeDetector.clip(y0, 0, image_to_crop.getHeight());
 			y1 = CannyEdgeDetector.clip(y1, 0, image_to_crop.getHeight());
 		    try {
-		    	BufferedImage cropped = image_to_crop.getSubimage(x0, y0, x1-x0, y1-y0);
-				ImageIO.write(cropped, "png", output1file);
+		    	BufferedImage cropped_image = image_to_crop.getSubimage(x0, y0, x1-x0, y1-y0);
+				ImageIO.write(cropped_image, "png", file);
 				i++;
 			} catch (IOException e) {
 				System.err.println("ERROR: could not write to output image: " + e.getMessage());
 			}
 	    }
+
+		// return the number of images that were cropped
+		return i;
 	}
 
 	private static class CannyEdgeDetector {
@@ -196,7 +222,7 @@ public class CircleDetector {
 			return new double[][][]{gradient, direction};
 		}
 
-		//filters out all non-maximum gradients by setting them to 0
+		// filters out all non-maximum gradients by setting them to 0
 		private static void filter (double[][] gradient, double[][] direction, BufferedImage input_image) {
 			for (int x = 1; x < input_image.getWidth() - 1; x++) {
 				for (int y = 1; y < input_image.getHeight() - 1; y++) {
@@ -213,7 +239,7 @@ public class CircleDetector {
 			}
 		}
 
-		//keep strong edges and weak edges close to strong pixels
+		// keep strong edges and weak edges close to strong pixels
 		private static Coordinates[] keep (double[][] gradient, BufferedImage input_image, int low, int high) {
 			//keep strong edges
 			int width = input_image.getWidth();
@@ -263,7 +289,7 @@ public class CircleDetector {
 		}
 	}
 
-	//helper class representing a point at (x, y)
+	// helper class representing a point at (x, y)
 	private static class Coordinates {
 		int x, y;
 		Coordinates(int x, int y){
@@ -286,8 +312,8 @@ public class CircleDetector {
 		}
 	}
 
-	//helper class representing a circle at (x,y) with radius r
-	//used as general 3-tuple in List<Circle> points
+	// helper class representing a circle at (x,y) with radius r
+	// used as general 3-tuple in List<Circle> points
 	private static class Circle {
 		int x, y, r;
 		public Circle(int x, int y, int r) {

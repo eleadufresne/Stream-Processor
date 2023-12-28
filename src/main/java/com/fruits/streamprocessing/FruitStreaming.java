@@ -18,12 +18,15 @@
 
 package com.fruits.streamprocessing;
 
+import com.fruits.streamprocessing.util.CircleDetector;
 import com.fruits.streamprocessing.util.DBSink;
-import com.fruits.streamprocessing.util.TextTokenizer;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringEncoder;
+import org.apache.flink.api.common.typeinfo.TypeHint;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.connector.file.sink.FileSink;
@@ -38,8 +41,10 @@ import org.apache.flink.streaming.api.functions.sink.filesystem.OutputFileConfig
 import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.OnCheckpointRollingPolicy;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.util.Collector;
 
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** Flink-based data processing app that reads files from a directory every 10s, filters and counts
  *  different types of oranges, and prints the result.
@@ -81,7 +86,7 @@ public class FruitStreaming {
         // sets the checkpoint storage where checkpoint snapshots will be written
         env.getCheckpointConfig().setCheckpointStorage(checkpoint_dir);
 
-        // set a source (DAG)
+        // set a source directory to be monitored
         FileSource<String> source =
             FileSource.forRecordStreamFormat(new TextLineInputFormat(), new Path(input_dir))
                 .monitorContinuously(Duration.ofSeconds(10)) // monitor every 10s
@@ -93,14 +98,26 @@ public class FruitStreaming {
 
         /* STEP 3 - transform the data ***********************************************************/
 
-        // filter out everything that is not an orange, and aggregate them by features
+        // count the circles (placeholder for oranges) in this window's images
+        String path_to_images_prefix = work_dir + "/fruit-dir/data/images/";
+        String path_to_filtered_images = path_to_images_prefix + "filtered-images/";
+        AtomicInteger i = new AtomicInteger();
         DataStream<Tuple2<String, Integer>> count =
             data_stream
-                .filter((FilterFunction<String>) value -> value.endsWith("orange"))
-                .map(new TextTokenizer())
-                .keyBy(value -> value.f0)
-                .window(TumblingProcessingTimeWindows.of(Time.seconds(10)))
-                .sum(1); // sums the results that were accumulated over 9s
+                .filter((FilterFunction<String>) value -> value.endsWith(".png") || value.endsWith(".jpg")) // keep only PNG or JPG files
+                .flatMap((String image, Collector<Tuple2<String, Integer>> out) -> {
+                    if(image.isEmpty()) return;
+                    String fruit_type = image.substring(0, image.indexOf('_')); // "orange_12" -> "orange"
+                    int num_circles = CircleDetector.detect(
+                        path_to_images_prefix + image,
+                        path_to_filtered_images + fruit_type + "_" + i.getAndIncrement(),
+                        100, 0.4); // detect all circles (fruits) and crop images
+                    out.collect(new Tuple2<>(fruit_type, num_circles)); // save the curr count
+                })
+                .returns(TypeInformation.of(new TypeHint<Tuple2<String, Integer>>() {})) // provide type information for compiler to stop yelling
+                .keyBy(value -> value.f0) // group by the first value (i.e. the fruit type)
+                .window(TumblingProcessingTimeWindows.of(Time.seconds(10))) // collect over 10s
+                .sum(1); // sums the results
 
         /* STEP 4 - store the results ************************************************************/
 
@@ -140,5 +157,15 @@ public class FruitStreaming {
         env.execute("Streaming: fruit monitoring");
 
         // TODO Have a script that can execute all the experiments in your project.
+    }
+
+    /** (helper) MapFunction takes a string and maps it to a tuple of string and integer */
+    private static class TextTokenizer implements MapFunction<String, Tuple2<String, Integer>> {
+        /** @param s input string to be mapped
+         *  @return a Tuple2 containing the input string paired with the number 1 */
+        @Override
+        public Tuple2<String, Integer> map(String s) {
+            return new Tuple2<>(s, 1);
+        }
     }
 }

@@ -111,7 +111,7 @@ to make some additional configurations.
     CREATE DATABASE fruits;
     # create a table inside the database
     USE fruits
-    CREATE TABLE pears
+    CREATE TABLE data
     (
         feature         VARCHAR(150) NOT NULL,  # ripe, rotten, etc.
         count           INT unsigned NOT NULL,  # number of fruit with this feature
