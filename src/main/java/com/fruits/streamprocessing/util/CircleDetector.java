@@ -1,5 +1,7 @@
 package com.fruits.streamprocessing.util;
 
+import com.fruits.streamprocessing.FruitStreaming;
+
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -14,8 +16,8 @@ import java.util.Set;
 
 import javax.imageio.ImageIO;
 
-/** Java adaptation of the tutorial "How to Detect Circles in Images"
- *  https://www.codingame.com/playgrounds/38470/how-to-detect-circles-in-images
+/** Java adaptation of the tutorial "How to Detect Circles in Images" for the {@link FruitStreaming}
+ *  application.
  *
  **** MULTISTEP CIRCLE DETECTOR *******************************************************************
  * 	STEP 1. Sobel edge detection
@@ -24,22 +26,22 @@ import javax.imageio.ImageIO;
  *			- Compute image gradient
  *			- Non-maximum suppression
  *			- Edge tracking
- * 	STEP 3. Circle Detection using Circle Hough Transform
+ * 	STEP 3. Circle detection using Hough transform
  **************************************************************************************************
  *
+ * @see <a href="https://www.codingame.com/playgrounds/38470/how-to-detect-circles-in-images">...</a>
  * @author Éléa Dufresne
  */
 public class CircleDetector {
-	/**
-	 * Reads the image at path_to_image, looks through it for circles,
-	 * and writes cropped images containing the circles in path_to_filtered_image
-	 * @param path_to_image the target image
-	 * @param path_to_filtered_image where to output cropped images to
-	 * @param r_min minimum radius of circles to look for in pixels
-	 * @param r_max minimum radius of circles to look for in pixels
-	 * @param steps number of iterations
-	 * @param threshold number between 0-1, fraction of circle visible to be counted as a detection, for example 0.4 would mean at least 40% of a circle must be visible
-	 * @return number of circles detected
+
+	/** Read the image at path_to_image, looks through it for circles, and writes cropped images
+	 *  containing the circles in path_to_filtered_image.
+	 *
+	 * @param path_to_image				the target image
+	 * @param path_to_filtered_image 	where to output cropped images to
+	 * @param steps 					number of iterations
+	 * @param threshold 				number between 0-1, fraction of circle visible to be counted as a detection, for example 0.4 would mean at least 40% of a circle must be visible
+	 * @return 	number of circles detected
 	 */
 	public static int detect(String path_to_image, String path_to_filtered_image, int steps, double threshold) {
 		// read the image
@@ -52,13 +54,11 @@ public class CircleDetector {
 			return 0;
 		}
 
-		//find circles
+		// find circles
 		int height = image_to_crop.getHeight(); // 200
 		int width = image_to_crop.getWidth(); // 300
 		int r_max = Math.min(height, width) / 10; // 22
 		int r_min = Math.max(height, width) / 20; // 15
-
-		// System.out.println("image "+path_to_image+" with h=" +height +"and w="+width);
 
 		// search for circles
 		List<Circle> points = new ArrayList<>();
@@ -82,10 +82,8 @@ public class CircleDetector {
 				int b = y - d.r;
 				Circle for_accumulator = new Circle(a, b, d.x);
 				Integer within_threshold = accumulator.get(for_accumulator);
-				if (within_threshold == null)
-					accumulator.put(for_accumulator, 1);
-				else
-					accumulator.put(for_accumulator, ++within_threshold);
+				if (within_threshold == null) accumulator.put(for_accumulator, 1);
+				else accumulator.put(for_accumulator, ++within_threshold);
 			}
 		}
 
@@ -103,15 +101,11 @@ public class CircleDetector {
 	                    overlaps = true;
 	                    break;
 	                }
-	            } if (!overlaps) {
-	                circles.add(circle);
-//	                System.out.println(accumulator.get(circle) / (double) steps + " " + circle.x
-//							+ " " + circle.y + " " + circle.r);
-	            }
+	            } if (!overlaps) circles.add(circle);
 	        }
 	    }
 
-	    //crop all detected circles into their own images and write to disk
+	    // crop all detected circles into their own images and write to disk
 	    int i = 0;
 	    for (Circle circle : circles) {
 			File file = new File(path_to_filtered_image+"_"+i+".png");
@@ -136,19 +130,28 @@ public class CircleDetector {
 		return i;
 	}
 
+	/* (helper) Canny algorithm to clean the image and only keep the strongest edges */
 	private static class CannyEdgeDetector {
 
-		//find edges that can belong to circles
+		/** Keep strong edges.
+		 *
+		 * @param input_image	the target image
+		 * @return	coordinates of edges that might belong to circles
+		 */
 		public static Coordinates[] detect (BufferedImage input_image) {
 			BufferedImage grayscale = CannyEdgeDetector.grayscale(input_image);
 			BufferedImage blurred = CannyEdgeDetector.blur(grayscale);
 			double[][][] gradient_and_direction = gradient(blurred);
-			filter(gradient_and_direction[0], gradient_and_direction[1], blurred);
+			filter_out_non_maximum(gradient_and_direction[0], gradient_and_direction[1], blurred);
 			return keep(gradient_and_direction[0], blurred, 20, 25);
 		}
 
-		//averages out all colours into a grayscale image
-		private static BufferedImage grayscale (BufferedImage input_image) {
+		/** Average out all colours into a grayscale image.
+		 *
+		 * @param input_image	the target image
+		 * @return	a grayscale image
+		 */
+		private static BufferedImage grayscale(BufferedImage input_image) {
 			BufferedImage output_image = new BufferedImage(input_image.getWidth(),
 					input_image.getHeight(), BufferedImage.TYPE_INT_RGB);
 			for (int x = 0; x < input_image.getWidth(); x++) {
@@ -164,7 +167,13 @@ public class CircleDetector {
 			return output_image;
 		}
 
-		//gaussian blur image to remove noise, assumes grayscale input
+		//
+
+		/** Gaussian blur to remove noise, assumes grayscale input.
+		 *
+		 * @param input_image	the target grayscale image
+		 * @return 	image with gaussian filter
+		 */
 		private static BufferedImage blur (BufferedImage input_image) {
 			BufferedImage output_image = new BufferedImage(
 					input_image.getWidth(),
@@ -201,7 +210,11 @@ public class CircleDetector {
 			return output_image;
 		}
 
-		//calculate gradient and direction for edges, assumes grayscale input
+		/** Compute image gradient.
+		 *
+		 * @param input_image	the target image with gaussian filter
+		 * @return	gradient and direction of edges
+		 */
 		private static double[][][] gradient (BufferedImage input_image) {
 			int width = input_image.getWidth();
 			int height = input_image.getHeight();
@@ -222,18 +235,24 @@ public class CircleDetector {
 			return new double[][][]{gradient, direction};
 		}
 
-		// filters out all non-maximum gradients by setting them to 0
-		private static void filter (double[][] gradient, double[][] direction, BufferedImage input_image) {
+		/** Non-maximum suppression: filter out all non-maximum gradients by setting them to 0.
+		 *
+		 * @param gradients		computed edge gradients
+		 * @param directions 	computed edges directions
+		 * @param input_image 	the target image
+		 */
+		private static void filter_out_non_maximum(double[][] gradients, double[][] directions,
+												   BufferedImage input_image) {
 			for (int x = 1; x < input_image.getWidth() - 1; x++) {
 				for (int y = 1; y < input_image.getHeight() - 1; y++) {
-					double angle = direction[x][y] >= 0 ? direction[x][y] : direction[x][y] + Math.PI;
+					double angle = directions[x][y] >= 0 ? directions[x][y] : directions[x][y] + Math.PI;
 					double rangle = Math.round(angle / (Math.PI / 4));
-					double mag = gradient[x][y];
-					if ((rangle == 0 || rangle == 4) && (gradient[x - 1][y] > mag || gradient[x + 1][y] > mag)
-							|| (rangle == 1 && (gradient[x - 1][y - 1] > mag || gradient[x + 1][y + 1] > mag))
-							|| (rangle == 2 && (gradient[x][y - 1] > mag || gradient[x][y + 1] > mag))
-							|| (rangle == 3 && (gradient[x + 1][y - 1] > mag || gradient[x - 1][y + 1] > mag))) {
-						gradient[x][y] = 0;
+					double mag = gradients[x][y];
+					if ((rangle == 0 || rangle == 4) && (gradients[x - 1][y] > mag || gradients[x + 1][y] > mag)
+							|| (rangle == 1 && (gradients[x - 1][y - 1] > mag || gradients[x + 1][y + 1] > mag))
+							|| (rangle == 2 && (gradients[x][y - 1] > mag || gradients[x][y + 1] > mag))
+							|| (rangle == 3 && (gradients[x + 1][y - 1] > mag || gradients[x - 1][y + 1] > mag))) {
+						gradients[x][y] = 0;
 					}
 				}
 			}
@@ -282,14 +301,14 @@ public class CircleDetector {
 			return to_return;
 		}
 
-		// helper method used in blur() and detect() to place bounds on coordinates
+		/** helper method used in blur() and detect() to place bounds on coordinates */
 		private static int clip(int x, int l, int u) {
 			if (x < l) return l;
 			return Math.min(x, u);
 		}
 	}
 
-	// helper class representing a point at (x, y)
+	/** (helper) Point with coordinates (x, y) */
 	private static class Coordinates {
 		int x, y;
 		Coordinates(int x, int y){
@@ -298,10 +317,8 @@ public class CircleDetector {
 		}
 		@Override
 		public boolean equals(Object o){
-			if (o == this)
-				return true;
-			if (!(o instanceof Coordinates))
-				return false;
+			if (o == this) return true;
+			if (!(o instanceof Coordinates)) return false;
 			Coordinates other = (Coordinates) o;
 			return (this.x == other.x && this.y == other.y);
 		}
@@ -312,8 +329,7 @@ public class CircleDetector {
 		}
 	}
 
-	// helper class representing a circle at (x,y) with radius r
-	// used as general 3-tuple in List<Circle> points
+	/** (helper) Circle centered at (x,y) with radius r */
 	private static class Circle {
 		int x, y, r;
 		public Circle(int x, int y, int r) {
@@ -323,10 +339,8 @@ public class CircleDetector {
 		}
 		@Override
 		public boolean equals(Object o){
-			if (o == this)
-				return true;
-			if (!(o instanceof Circle))
-				return false;
+			if (o == this) return true;
+			if (!(o instanceof Circle)) return false;
 			Circle other = (Circle) o;
 			return (this.x == other.x && this.y == other.y && this.r == other.r);
 		}
