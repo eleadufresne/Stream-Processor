@@ -11,12 +11,9 @@ public enum ExecutionMode {
     @Override
     public String toString() {
         switch (this) {
-            case TEXT:
-                return "text files";
-            case IMAGES:
-                return "images";
-            default:
-                throw new IllegalArgumentException();
+            case TEXT: return "text files";
+            case IMAGES: return "images";
+            default: throw new IllegalArgumentException();
         }
     }
 }

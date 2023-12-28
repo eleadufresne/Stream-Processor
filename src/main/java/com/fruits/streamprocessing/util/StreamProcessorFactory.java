@@ -8,14 +8,11 @@ import java.util.Map;
  * @author Éléa Dufresne
  */
 public class StreamProcessorFactory {
-    public static StreamProcessor getProcessor(ExecutionMode mode, Map<String, String> paths) {
+    public static StreamProcessor get_processor(ExecutionMode mode, Map<String, String> paths) {
         switch (mode) {
-            case TEXT:
-                return new TextFileProcessor();
-            case IMAGES:
-                return new ImageProcessor(paths);
-            default:
-                throw new IllegalArgumentException("Unsupported execution mode: " + mode);
+            case TEXT: return new TextFileProcessor();
+            case IMAGES: return new ImageProcessor(paths);
+            default: throw new IllegalArgumentException("ERROR unsupported execution mode: " + mode);
         }
     }
 }

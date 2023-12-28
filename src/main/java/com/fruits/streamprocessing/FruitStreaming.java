@@ -71,7 +71,7 @@ public class FruitStreaming {
 
         // set the execution mode and data processing strategy
         ExecutionMode execution_mode = ExecutionMode.valueOf(params.get("mode", "IMAGES"));
-        this.stream_processor = StreamProcessorFactory.getProcessor(execution_mode, paths);
+        this.stream_processor = StreamProcessorFactory.get_processor(execution_mode, paths);
         System.out.println("Monitoring " + execution_mode);
 
         // set the directory paths
