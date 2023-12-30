@@ -23,10 +23,7 @@ $FLINK_HOME/bin/start-cluster.sh
 
 # run the scripts
 ./scripts/large-input-images.sh 0
-#./scripts/large-input-text.sh 0
-
-# Wait before stopping services
-read -p -r "\nPlease press any key to stop the services and exit.\n"
+./scripts/large-input-text.sh 0
 
 # stop prometheus
 kill $PROMETHEUS_PID

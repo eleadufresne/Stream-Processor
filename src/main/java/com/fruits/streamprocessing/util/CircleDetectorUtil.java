@@ -32,7 +32,7 @@ import javax.imageio.ImageIO;
  * @see <a href="https://www.codingame.com/playgrounds/38470/how-to-detect-circles-in-images">...</a>
  * @author Éléa Dufresne
  */
-public class CircleDetector {
+public class CircleDetectorUtil {
 
 	/** Read the image at path_to_image, looks through it for circles, and writes cropped images
 	 *  containing the circles in path_to_filtered_image.
@@ -55,10 +55,10 @@ public class CircleDetector {
 		}
 
 		// find circles
-		int height = image_to_crop.getHeight(); // 200
-		int width = image_to_crop.getWidth(); // 300
-		int r_max = Math.min(height, width) / 10; // 22
-		int r_min = Math.max(height, width) / 20; // 15
+		int height = image_to_crop.getHeight();
+		int width = image_to_crop.getWidth();
+		int r_min = Math.min(height, width) / 20;
+		int r_max = Math.max(height, width) / 5;
 
 		// search for circles
 		List<Circle> points = new ArrayList<>();

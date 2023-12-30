@@ -19,11 +19,10 @@
 package com.fruits.streamprocessing.util.operators;
 
 import com.fruits.streamprocessing.FruitStreaming;
-import com.fruits.streamprocessing.util.CircleDetector;
+import com.fruits.streamprocessing.util.CircleDetectorUtil;
 
-import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.util.Collector;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -31,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * in the image along with their type. Used in the {@link FruitStreaming} app.
  * @author Éléa Dufresne
  */
-public class FruitDetector implements FlatMapFunction<String, Tuple2<String, Integer>> {
+public class FruitDetector implements MapFunction<String, Tuple2<String, Integer>> {
   private final String path_to_images;
   private final String path_to_cropped_images;
   private final AtomicInteger i;
@@ -49,21 +48,21 @@ public class FruitDetector implements FlatMapFunction<String, Tuple2<String, Int
 
   /** Finds circles (fruits) in an image, crops new images to it and collects the total count.
    *
-   * @param image target image
-   * @param out circles (fruits) that were found
+   * @param image target image path
+   * @return Tuple2 of circles (fruits) that were found
    */
   @Override
-  public void flatMap(String image, Collector<Tuple2<String, Integer>> out) {
-    // ensure there is an image
-    if (image.isEmpty()) return;
+  public Tuple2<String, Integer> map(String image) {
+    if (image.isEmpty()) return new Tuple2<String, Integer>;
+    System.out.println("Detecting fruits in image: " + image);
     // reformat to fruit type (e.g. "orange_12" becomes "orange")
     String fruit_type = image.substring(0, image.indexOf('_'));
     // detect + crop
-    int num_circles = CircleDetector.detect(
+    int num_circles = CircleDetectorUtil.detect(
         this.path_to_images + image,
         this.path_to_cropped_images + fruit_type + "_" + i.getAndIncrement(),
         100, 0.4);
     // save the number of circles (fruits) found in this image
-    out.collect(new Tuple2<>(fruit_type, num_circles));
+    return new Tuple2<>(fruit_type, num_circles);
   }
 }

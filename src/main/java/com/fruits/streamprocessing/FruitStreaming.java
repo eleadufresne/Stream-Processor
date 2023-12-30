@@ -104,7 +104,7 @@ public class FruitStreaming {
     /** Configure checkpoint rules and enable checkpointing. */
     private void checkpointing() {
         // enable checkpoints every 10s (Flink needs to complete checkpoints to finalize writing)
-        environment.enableCheckpointing(1000);
+        environment.enableCheckpointing(10000);
         // make sure 500 ms of progress happen between checkpoints
         environment.getCheckpointConfig().setMinPauseBetweenCheckpoints(500);
         // only two consecutive checkpoint failures are tolerated
@@ -131,7 +131,7 @@ public class FruitStreaming {
 
         // save data to a stream
         this.input_stream = environment
-            .fromSource(source, WatermarkStrategy.noWatermarks(),"Source: directory");
+            .fromSource(source, WatermarkStrategy.noWatermarks(),"Monitored directory");
     }
 
     /** Apply transformations on the input stream to count all fruits captured in 10-second intervals. */
@@ -156,14 +156,16 @@ public class FruitStreaming {
                         .withRollingPolicy(OnCheckpointRollingPolicy.build()) // this is important
                         .build();
 
-        output_stream.sinkTo(file_sink).name("Sink: log file");
+        output_stream.sinkTo(file_sink).name("File")
+            .setDescription("Sink to a log file containing results from this 10-second interval.");
     }
 
     /** Sink to a database and update it with the results from this 10-second interval. */
     private void sink_to_db() {
         SinkFunction<Tuple2<String, Integer>> database_sink =
                 new DBSink(db.get("url"), db.get("user"), db.get("password"));
-        output_stream.addSink(database_sink).name("Sink: database");
+        output_stream.addSink(database_sink).name("Database")
+            .setDescription("Sink to a database and update it with the results from this 10-second interval.");
     }
 
     /** Triggers the job. */

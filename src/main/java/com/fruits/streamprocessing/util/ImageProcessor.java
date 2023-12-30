@@ -4,8 +4,6 @@ import com.fruits.streamprocessing.FruitStreaming;
 import com.fruits.streamprocessing.util.operators.FruitDetector;
 
 import org.apache.flink.api.common.functions.FilterFunction;
-import org.apache.flink.api.common.typeinfo.TypeHint;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
@@ -36,17 +34,18 @@ public class ImageProcessor implements StreamProcessor {
         // count the circles (placeholder for fruits) in this window's images
         return input_stream
                 .filter((FilterFunction<String>) value -> value.endsWith(".png") || value.endsWith(".jpg"))
-                .name("filter - PNG and JPG")
-                .flatMap(new FruitDetector(path_to_images, fruit_images))
-                // provide type information so the compiler stops yelling at me
-                .returns(TypeInformation.of(new TypeHint<Tuple2<String, Integer>>() {}))
-                .name("flatmap - detect and crop")
+                .setDescription("Keep only the path to images (i.e. PNG or JPG).")
+                .name("Filter")
+                .map(new FruitDetector(path_to_images, fruit_images))
+                .setDescription("Detect the fruits each image and crop them accordingly.")//.setParallelism(50)
+                .name("Map")
                 // group by the first value (i.e. the fruit type)
                 .keyBy(value -> value.f0)
                 // collect over 10s
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(10)))
                 // sum the results
                 .sum(1)
-                .name("aggregate - group fruit types over 10s");
+                .setDescription("Group and sum fruit types over 10-second intervals.")
+                .name("Keyed Aggregation");
     }
 }
