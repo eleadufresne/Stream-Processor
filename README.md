@@ -172,34 +172,32 @@ Make sure that you have correctly [configured the environment](#setup-configurat
 We have provided a script that enables you to execute all experiments and evaluate performance on a large input, 
 throughput, latency, and bandwidth.
 
-TODO 
-1. make requirement.txt ?
-2. explain examples
-3. explain xp
-   1. prometheus (configs!)
-   2. grafna
-4. add clean repo
+**<span style="color:red"> This section is in progress </span>** :exclamation:
 
-5. report!!!!
-6. tomorrow presentation
+The following is a list of tasks that need to be completed:
 
-TODO Kafka -> IoT data producer :c
+1. Create a requirement.txt file.
+2. Provide detailed explanations for the examples.
+3. Provide an explanation for XP, including Prometheus (configs!) and Grafana.
+4. Add a clean repository.
+5. Submit a report.
+6. Prepare for tomorrow's presentation.
 
-http://localhost:8081/jobs/88b385be68c87272189ebe25b21784f4/metrics
+In terms of monitoring, we want to keep track of the following metrics:
 
-flink_taskmanager_job_latency_source_id_operator_id_operator_subtask_index
-rate(flink_taskmanager_job_task_operator_numRecordsOutPerSecond[1m])
-rate(flink_taskmanager_network_totalBytesOut[1m])
+- Flink task manager job latency source ID operator ID operator subtask index
+- Rate of Flink task manager job task operator numRecordsOutPerSecond over a period of one minute
+- Rate of Flink task manager network totalBytesOut over a period of one minute
 
-sudo apt-get install grafana
-Step 4: Start Grafana
-    Start the Grafana server: sudo service grafana-server start.
-    Enable the Grafana service to start at boot: sudo systemctl enable grafana-server.service.
-Step 5: Access Grafana
-    Open a browser on your Windows machine.
-    Navigate to http://localhost:3000/.
-    Log in using the default credentials (admin/admin).
+To install Grafana, you can follow these steps:
 
+1. Run the command "sudo apt-get install grafana" in the terminal.
+2. Start the Grafana server by running the command "sudo service grafana-server start".
+3. Enable the Grafana service to start at boot by running the command "sudo systemctl enable grafana-server.service".
+4. Open a browser on your Windows machine and navigate to http://localhost:3000/.
+5. Log in using the default credentials (admin/admin).
+
+It's also important to mention the configuration files for Grafana, including the dashboard.
 
 # Troubleshooting Common Issues
 

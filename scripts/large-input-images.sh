@@ -22,13 +22,13 @@ for j in $(seq 1 10); do
     upper_bound=$((i + 9))
     cp orchard-watch/sample-input/billiard_${i}-${upper_bound}.txt orchard-watch/data/
     echo "processing billiard balls images ${i} through ${upper_bound}"
-    sleep 10
+    sleep 5
   done
   for i in $(seq 1 10 41); do
     upper_bound=$((i + 9))
     cp orchard-watch/sample-input/tennis_${i}-${upper_bound}.txt orchard-watch/data/
     echo "processing tennis balls images ${i} through ${upper_bound}"
-    sleep 10
+    sleep 5
   done
   # for the sake of experimentation
   rm -f orchard-watch/data/*.txt
