@@ -179,14 +179,10 @@ TODO
    1. prometheus (configs!)
    2. grafna
 4. add clean repo
-
 5. report!!!!
 6. tomorrow presentation
 
-TODO Kafka -> IoT data producer :c
-
-http://localhost:8081/jobs/88b385be68c87272189ebe25b21784f4/metrics
-
+what we want to monito
 flink_taskmanager_job_latency_source_id_operator_id_operator_subtask_index
 rate(flink_taskmanager_job_task_operator_numRecordsOutPerSecond[1m])
 rate(flink_taskmanager_network_totalBytesOut[1m])
@@ -200,6 +196,7 @@ Step 5: Access Grafana
     Navigate to http://localhost:3000/.
     Log in using the default credentials (admin/admin).
 
+TODO: talk about the config files
 
 # Troubleshooting Common Issues
 
