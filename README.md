@@ -134,8 +134,8 @@ to make some additional configurations.
 # Running the Application
 
 ### Launching the Application
-By default, the job monitors files from ``fruit-dir`` (provided under ``util``) in the working directory. Before 
-proceeding, either place ``fruit-dir`` to your working directory or provide paths as argument. Now, from the root  
+By default, the job monitors files from ``orchard-watch`` (provided under ``util``) in the working directory. Before 
+proceeding, either place ``orchard-watch`` to your working directory or provide paths as argument. Now, from the root  
 of your UNIX-like system, execute the following commands. 
 
 ```shell
@@ -166,6 +166,39 @@ section for further troubleshooting.
 
 When you are done, stop the cluster with`$FLINK_HOME/bin/stop-cluster.sh` and shut down the MySQL server with 
 ``mysqladmin --user root shutdown``.
+
+# Run Experiments
+Make sure that you have correctly [configured the environment](#setup-configuration) before proceeding further. 
+We have provided a script that enables you to execute all experiments and evaluate performance on a large input, 
+throughput, latency, and bandwidth.
+
+TODO 
+1. make requirement.txt ?
+2. explain examples
+3. explain xp
+   1. prometheus (configs!)
+   2. grafna
+4. add clean repo
+
+5. report!!!!
+6. tomorrow presentation
+
+TODO Kafka -> IoT data producer :c
+
+http://localhost:8081/jobs/88b385be68c87272189ebe25b21784f4/metrics
+
+flink_taskmanager_job_latency_source_id_operator_id_operator_subtask_index
+rate(flink_taskmanager_job_task_operator_numRecordsOutPerSecond[1m])
+rate(flink_taskmanager_network_totalBytesOut[1m])
+
+sudo apt-get install grafana
+Step 4: Start Grafana
+    Start the Grafana server: sudo service grafana-server start.
+    Enable the Grafana service to start at boot: sudo systemctl enable grafana-server.service.
+Step 5: Access Grafana
+    Open a browser on your Windows machine.
+    Navigate to http://localhost:3000/.
+    Log in using the default credentials (admin/admin).
 
 
 # Troubleshooting Common Issues

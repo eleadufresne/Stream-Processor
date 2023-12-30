@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.fruits.streamprocessing.util;
+package com.fruits.streamprocessing.util.operators;
 
 import com.fruits.streamprocessing.FruitStreaming;
 

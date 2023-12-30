@@ -19,6 +19,7 @@
 package com.fruits.streamprocessing.util;
 
 import com.fruits.streamprocessing.FruitStreaming;
+import com.fruits.streamprocessing.util.operators.TextTokenizer;
 
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -37,9 +38,12 @@ public class TextFileProcessor implements StreamProcessor {
         // filter out everything that is not an orange, and aggregate them by features
         return input_stream
                 .filter((FilterFunction<String>) value -> value.endsWith("orange"))
+                .name("filter: oranges")
                 .map(new TextTokenizer())
+                .name("map: tuple")
                 .keyBy(value -> value.f0)
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(10)))
-                .sum(1); // sums the results that were accumulated over 10s
+                .sum(1) // sums the results that were accumulated over 10s
+                .name("aggregate - group fruit types over 10s");
     }
 }
