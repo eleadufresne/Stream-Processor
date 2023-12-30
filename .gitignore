@@ -28,3 +28,6 @@ replay_pid*
 
 #maven
 target
+orchard-watch/checkpoints/*
+orchard-watch/output/processed-images/*
+orchard-watch/output/202*

@@ -1,6 +1,7 @@
 package com.fruits.streamprocessing.util;
 
 import com.fruits.streamprocessing.FruitStreaming;
+import com.fruits.streamprocessing.util.operators.FruitDetector;
 
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.typeinfo.TypeHint;
@@ -29,25 +30,23 @@ public class ImageProcessor implements StreamProcessor {
      * @return  transformed stream
      */
     public DataStream<Tuple2<String, Integer>> process(DataStream<String> input_stream) {
-        String path_to_images_prefix = this.paths.get("work") + "/fruit-dir/data/images/";
-        String path_to_filtered_images = path_to_images_prefix + "filtered-images/";
+        String path_to_images = paths.get("input") + "/images/";
+        String fruit_images = paths.get("output") + "/processed-images/";
 
         // count the circles (placeholder for fruits) in this window's images
         return input_stream
-                .filter(
-                        (FilterFunction<String>)
-                                value -> value.endsWith(".png") || value.endsWith(".jpg"))
-                .name("Filter: PNG and JPG")
-                .flatMap(new ImageProcessingFlatMap(path_to_images_prefix, path_to_filtered_images))
+                .filter((FilterFunction<String>) value -> value.endsWith(".png") || value.endsWith(".jpg"))
+                .name("filter - PNG and JPG")
+                .flatMap(new FruitDetector(path_to_images, fruit_images))
                 // provide type information so the compiler stops yelling at me
                 .returns(TypeInformation.of(new TypeHint<Tuple2<String, Integer>>() {}))
-                .name("FlatMap: detect and crop")
+                .name("flatmap - detect and crop")
                 // group by the first value (i.e. the fruit type)
                 .keyBy(value -> value.f0)
                 // collect over 10s
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(10)))
                 // sum the results
                 .sum(1)
-                .name("Aggregate: group fruit types over 10s");
+                .name("aggregate - group fruit types over 10s");
     }
 }

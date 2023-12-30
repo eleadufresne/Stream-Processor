@@ -56,6 +56,7 @@ public class FruitStreaming {
     private DataStream<Tuple2<String, Integer>> output_stream;
 
     private final StreamProcessor stream_processor;
+    private final String job_name;
 
     /** Constructor.
      *
@@ -69,19 +70,22 @@ public class FruitStreaming {
         final ParameterTool params = ParameterTool.fromArgs(args);
         environment.getConfig().setGlobalJobParameters(params);
 
+        // set the job name's
+        this.job_name = params.get("job", "monitoring orchard");
+
         // set the execution mode and data processing strategy
         ExecutionMode execution_mode = ExecutionMode.valueOf(params.get("mode", "IMAGES"));
         this.stream_processor = StreamProcessorFactory.get_processor(execution_mode, paths);
-        System.out.println("Monitoring " + execution_mode);
+
 
         // set the directory paths
         System.out.println("Setting up directories...");
         this.paths.put("work", System.getProperty("user.dir"));
-        this.paths.put("default", "file:" + paths.get("work") + "/fruit-dir");
+        this.paths.put("default", paths.get("work") + "/orchard-watch");
         this.paths.put("input", params.get("input", paths.get("default") + "/data"));
-        this.paths.put("output", params.get("output", paths.get("default") + "/logs"));
-        this.paths.put(
-                "checkpoints", params.get("checkpoint", paths.get("default") + "/checkpoints"));
+        this.paths.put("output", params.get("output", paths.get("default") + "/output"));
+        this.paths.put("checkpoints", params.get("checkpoint", paths.get("default") +
+            "/checkpoints"));
 
         this.paths.forEach((key, value) -> System.out.println(key + " dir: " + value));
 
@@ -92,16 +96,19 @@ public class FruitStreaming {
         this.db.put("password", params.get("password", "Fru!t5"));
 
         this.db.forEach((key, value) -> System.out.println(key + ": " + value));
+
+        // set up performance metrics
+        environment.getConfig().setLatencyTrackingInterval(10); // ms
     }
 
     /** Configure checkpoint rules and enable checkpointing. */
     private void checkpointing() {
-        // enable checkpoints every 10.5s (Flink needs to complete checkpoints to finalize writing)
+        // enable checkpoints every 10s (Flink needs to complete checkpoints to finalize writing)
         environment.enableCheckpointing(1000);
         // make sure 500 ms of progress happen between checkpoints
         environment.getCheckpointConfig().setMinPauseBetweenCheckpoints(500);
         // only two consecutive checkpoint failures are tolerated
-        environment.getCheckpointConfig().setTolerableCheckpointFailureNumber(2);
+        environment.getCheckpointConfig().setTolerableCheckpointFailureNumber(1);
         // allow only one checkpoint to be in progress at the same time
         environment.getCheckpointConfig().setMaxConcurrentCheckpoints(1);
         // enable externalized checkpoints which are retained after job cancellation
@@ -110,7 +117,7 @@ public class FruitStreaming {
                 .setExternalizedCheckpointCleanup(
                         CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
         // sets the checkpoint storage where checkpoint snapshots will be written
-        environment.getCheckpointConfig().setCheckpointStorage(this.paths.get("checkpoints"));
+        environment.getCheckpointConfig().setCheckpointStorage("file:"+this.paths.get("checkpoints"));
     }
 
     /** Load the input data and put it into a stream. */
@@ -118,7 +125,7 @@ public class FruitStreaming {
         // set a source directory to be monitored every 10s
         FileSource<String> source =
                 FileSource.forRecordStreamFormat(
-                                new TextLineInputFormat(), new Path(paths.get("input")))
+                                new TextLineInputFormat(), new Path("file:"+paths.get("input")))
                         .monitorContinuously(Duration.ofSeconds(10)) // monitor every 10s
                         .build();
 
@@ -143,7 +150,7 @@ public class FruitStreaming {
 
         FileSink<Tuple2<String, Integer>> file_sink =
                 FileSink.forRowFormat(
-                                new Path(paths.get("output")),
+                                new Path("file:"+paths.get("output")),
                                 new SimpleStringEncoder<Tuple2<String, Integer>>("UTF-8"))
                         .withOutputFileConfig(output_file)
                         .withRollingPolicy(OnCheckpointRollingPolicy.build()) // this is important
@@ -161,7 +168,7 @@ public class FruitStreaming {
 
     /** Triggers the job. */
     private void monitor() throws Exception {
-        this.environment.execute("Stream Processing: fruit monitoring");
+        this.environment.execute("Executing stream processing job: " + this.job_name);
     }
 
     /** Main method for the windows stream processing app.
@@ -191,17 +198,16 @@ public class FruitStreaming {
 
         // STEP 5 - trigger the program execution
         job.monitor();
-
-        // TODO Have a script that can execute all the experiments in your project.
     }
 
     /** Print help information for the command line arguments. */
     private static void help() {
         System.out.println("\n*** Fruit monitoring job usage *******************************************************************\n\n"
+                        + "  --job [string]: name of this job; default is monitoring orchard.\n"
                         + "  --mode [TEXT|IMAGES]: execution mode of the application; default is IMAGES.\n"
-                        + "  --input [path]: path to the input directory; default is {work_dir}/fruit-dir/data\n"
-                        + "  --output [path]: path to the output directory; default is {work_dir}/fruit-dir/logs\n"
-                        + "  --checkpoint [path]: path for checkpoint data; default is {work_dir}/fruit-dir/checkpoints\n"
+                        + "  --input [path]: path to the input directory; default is {work_dir}/orchard-watch/data\n"
+                        + "  --output [path]: path to the output directory; default is {work_dir}/orchard-watch/output\n"
+                        + "  --checkpoint [path]: path for checkpoint data; default is {work_dir}/orchard-watch/checkpoints\n"
                         + "  --url [database URL]: URL for database connection; default is jdbc:mysql://localhost:3306/fruits\n"
                         + "  --user [database user]: database username; default is fruit_enthusiast\n"
                         + "  --password [database password]: database password; default is Fru!t5\n\n"
