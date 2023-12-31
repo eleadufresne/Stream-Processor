@@ -21,7 +21,7 @@ cp orchard-watch/sample-input/billiard_0.txt orchard-watch/data/
 echo "processing billiard_0.txt..."
 
 # ensure the job completed
-sleep 21
+sleep 21s
 
 # terminate the job
 $FLINK_HOME/bin/flink stop --savepointPath $FLINK_HOME/tmp/flink-savepoints $JOB_ID

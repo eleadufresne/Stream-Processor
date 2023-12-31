@@ -1,11 +1,9 @@
 package com.fruits.streamprocessing.util;
 
 import com.fruits.streamprocessing.FruitStreaming;
-import com.fruits.streamprocessing.util.operators.FruitDetector;
+import com.fruits.streamprocessing.util.operators.ImageTokenizer;
 
 import org.apache.flink.api.common.functions.FilterFunction;
-import org.apache.flink.api.common.typeinfo.TypeHint;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
@@ -17,12 +15,16 @@ import java.util.Map;
  *  @author Éléa Dufresne
  */
 public class ImageProcessor implements StreamProcessor {
-    final private Map<String, String> paths;
+    final private ImageTokenizer image_tokenizer;
     /** constructor
      *
      * @param paths paths for the application
      */
-    public ImageProcessor(Map<String, String> paths) { this.paths = paths; }
+    public ImageProcessor(Map<String, String> paths) {
+        image_tokenizer = new ImageTokenizer(
+            paths.get("input") + "/images/",
+            paths.get("output") + "/processed-images/");
+    }
 
     /** Apply transformations on the input stream to count all fruits captured in 10-second intervals.
      *
@@ -30,23 +32,21 @@ public class ImageProcessor implements StreamProcessor {
      * @return  transformed stream
      */
     public DataStream<Tuple2<String, Integer>> process(DataStream<String> input_stream) {
-        String path_to_images = paths.get("input") + "/images/";
-        String fruit_images = paths.get("output") + "/processed-images/";
-
         // count the circles (placeholder for fruits) in this window's images
         return input_stream
                 .filter((FilterFunction<String>) value -> value.endsWith(".png") || value.endsWith(".jpg"))
-                .name("filter - PNG and JPG")
-                .flatMap(new FruitDetector(path_to_images, fruit_images))
-                // provide type information so the compiler stops yelling at me
-                .returns(TypeInformation.of(new TypeHint<Tuple2<String, Integer>>() {}))
-                .name("flatmap - detect and crop")
+                .setDescription("Keep only the path to images (i.e. PNG or JPG).")
+                .name("Filter")
+                .map(image_tokenizer).setParallelism(10)
+                .setDescription("Detect the fruits each image and crop them accordingly.")
+                .name("Map")
                 // group by the first value (i.e. the fruit type)
                 .keyBy(value -> value.f0)
                 // collect over 10s
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(10)))
                 // sum the results
                 .sum(1)
-                .name("aggregate - group fruit types over 10s");
+                .setDescription("Group and sum fruit types over 10-second intervals.")
+                .name("Keyed Aggregation");
     }
 }

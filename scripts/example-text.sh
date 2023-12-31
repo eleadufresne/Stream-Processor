@@ -17,12 +17,12 @@ JOB_ID=$(echo "$OUTPUT" | awk 'END{print $NF}')
 
 # copy tree files every 10 seconds
 for i in {0..4}; do
+    sleep 10s
     cp orchard-watch/sample-input/tree_${i}.txt orchard-watch/data/
     echo "processing tree_${i}.txt..."
-    sleep 10
 done
 # ensure the job completed
-sleep 11
+sleep 21s
 echo "done!"
 
 # terminate the job

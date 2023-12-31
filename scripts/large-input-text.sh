@@ -18,14 +18,14 @@ JOB_ID=$(echo "$OUTPUT" | awk 'END{print $NF}')
 # generate large files in the data directory
 words=("ripe orange" "immature orange" "leaf" "branch" "rotten orange")
 for i in {0..50}; do
+    sleep 10s
     file_name="large_tree_${i}.txt"
     for (( j = 0; j < 10000; j++ )); do # 100 000 lines per file
         echo "${words[$RANDOM % ${#words[@]}]}" >> "orchard-watch/data/$file_name"
     done
-    sleep 10
 done
 # ensure the job completed
-sleep 11
+sleep 21s
 echo "done!"
 
 # terminate the job
