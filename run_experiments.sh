@@ -16,7 +16,6 @@ PROMETHEUS_PID=$!
 # start grafana @localhost:3000
 echo "Starting Grafana server at localhost:3000"
 sudo service grafana-server start
-sudo systemctl enable grafana-server.service
 
 # start a flink cluster @localhost:8081
 echo "Starting Flink cluster at localhost:8081"

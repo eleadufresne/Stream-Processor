@@ -22,6 +22,8 @@ It paves the way for more informed and timely decisions in intelligent farming.
     * [Launching the Application](#launching-the-application)
     * [Accessing the Flink Dashboard](#accessing-the-flink-dashboard)
     * [Shutting Down the Application](#shutting-down-the-application)
+* [Running the Examples](#running-the-examples)
+* [Running the Experiments](#running-the-experiments)
 * [Troubleshooting Common Issues](#troubleshooting-common-issues)
     * [`java.nio.file.FileSystemException`](#javaniofilefilesystemexception)
     * [Connection Issues on WSL](#connection-issues-on-wsl)
@@ -131,6 +133,22 @@ to make some additional configurations.
     systemd=true
     ```
 
+6. **[Optional] Performance Monitoring Dashboards** Although Flink provides a dashboard with some useful metrics, it might be worth 
+installing Prometheus and Grafana if you are looking for better data visualization. Keep in mind that if you decide 
+**not** to install them, you will need to comment out the relevant lines in the experiment script.
+    ```shell
+   # install prometheus
+   sudo apt-get install prometheus
+    # install Grafana
+    sudo apt-get install grafana
+    # start the Grafana server
+    sudo service grafana-server start
+    ```
+    Open a browser on your Windows machine and navigate to [localhost:3000](http://localhost:3000/). Log in using the default 
+    credentials (admin/admin). Create a new dashboard for this experiment by uploading the `json` template we provide under
+    the config folder. We also provide a Flink config that enables Prometheus, and opens up ports for it. In order to use 
+    this reporter you must copy ``/opt/flink-metrics-prometheus-1.18.0.jar`` into the ``/lib`` folder of your Flink distribution
+
 # Running the Application
 
 ### Launching the Application
@@ -167,37 +185,26 @@ section for further troubleshooting.
 When you are done, stop the cluster with`$FLINK_HOME/bin/stop-cluster.sh` and shut down the MySQL server with 
 ``mysqladmin --user root shutdown``.
 
-# Run Experiments
+# Running the Examples
+The program features two modes of execution, one for processing images and another for text files. To run both, simply 
+execute the ``run_examples.sh`` file. The output can be found under the ``./orchard-watch/output`` directory.
+
+# Running the Experiments
 Make sure that you have correctly [configured the environment](#setup-configuration) before proceeding further. 
 We have provided a script that enables you to execute all experiments and evaluate performance on a large input, 
 throughput, latency, and bandwidth.
 
-**<span style="color:red"> This section is in progress </span>** :exclamation:
+To execute the experiments, you need to launch the "run_experiments.sh" script with the option 0. This will initiate all 
+the experiments without having to build the JAR file. You can also perform individual experiments that are stored in 
+the ``script`` directory.
 
-The following is a list of tasks that need to be completed:
+Once you have launched the script, you can open the Flink dashboard on your web browser at[localhost:8081](http://localhost:8081). 
+To access Prometheus, go to [localhost:9090](http://localhost:9090), and for Grafana, visit [localhost:3000](http://localhost:3000).
 
-1. Create a requirement.txt file.
-2. Provide detailed explanations for the examples.
-3. Provide an explanation for XP, including Prometheus (configs!) and Grafana.
-4. Add a clean repository.
-5. Submit a report.
-6. Prepare for tomorrow's presentation.
-
-In terms of monitoring, we want to keep track of the following metrics:
-
-- Flink task manager job latency source ID operator ID operator subtask index
-- Rate of Flink task manager job task operator numRecordsOutPerSecond over a period of one minute
-- Rate of Flink task manager network totalBytesOut over a period of one minute
-
-To install Grafana, you can follow these steps:
-
-1. Run the command "sudo apt-get install grafana" in the terminal.
-2. Start the Grafana server by running the command "sudo service grafana-server start".
-3. Enable the Grafana service to start at boot by running the command "sudo systemctl enable grafana-server.service".
-4. Open a browser on your Windows machine and navigate to http://localhost:3000/.
-5. Log in using the default credentials (admin/admin).
-
-It's also important to mention the configuration files for Grafana, including the dashboard.
+In terms of monitoring, we are interested in the following metrics:
+1. ``numRecordsOutPerSecond`` - Number of records this task/operator sends per second. (throughput)
+2. ``latency`` - Latency from the source operator to this operator.
+3. ``restartingTime `` - The time it took to restart the job, or how long the  current restart has been in progress.
 
 # Troubleshooting Common Issues
 
