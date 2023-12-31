@@ -105,7 +105,7 @@ to make some additional configurations.
     FLUSH PRIVILEGES;
     # log out of MySQL
     quit
-    # log in as the newly created user, and type in the password (oranges)
+    # log in as the newly created user, and type in the password
     mysql -u fruit_enthusiast -p
     # create a new database
     CREATE DATABASE fruits;
