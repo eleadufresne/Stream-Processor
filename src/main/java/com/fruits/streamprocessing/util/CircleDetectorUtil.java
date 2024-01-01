@@ -57,8 +57,8 @@ public class CircleDetectorUtil {
 		// find circles
 		int height = image_to_crop.getHeight(); // 200
 		int width = image_to_crop.getWidth(); // 300
-		int r_max = Math.min(height, width) / 7; // 22
-		int r_min = Math.max(height, width) / 20; // 15
+		int r_min = Math.min(height, width) / 15; // 15
+		int r_max = Math.max(height, width) / 10; // 22
 
 		// search for circles
 		List<Circle> points = new ArrayList<>();

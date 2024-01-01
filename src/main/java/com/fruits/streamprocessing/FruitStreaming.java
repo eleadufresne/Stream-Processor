@@ -75,13 +75,6 @@ public class FruitStreaming {
 
         paths.forEach((key, value) -> System.out.println(key + " dir: " + value));
 
-        // set the DB credentials
-        System.out.println("Setting up database credentials...");
-        SinkFunction<Tuple2<String, Integer>> database_sink = new DBSink(
-            params.get("url", "jdbc:mysql://localhost:3306/fruits"),
-            params.get("user", "fruit_enthusiast"),
-            params.get("password", "Fru!t5"));
-
         // set up performance metrics
         environment.getConfig().setLatencyTrackingInterval(50); // ms
 
@@ -93,18 +86,18 @@ public class FruitStreaming {
         environment.getCheckpointConfig().setCheckpointStorage("file:"+paths.get("checkpoints")); // checkpoint storage
 
         // set a source directory to be monitored every 10s
-        FileSource<String> source =
-            FileSource.forRecordStreamFormat(
-                    new TextLineInputFormat(), new Path("file:"+paths.get("input")))
+        FileSource<String> source = FileSource
+            .forRecordStreamFormat(new TextLineInputFormat(), new Path("file:"+paths.get("input")))
                 .monitorContinuously(Duration.ofSeconds(10)) // monitor every 10s
                 .build();
 
         // apply transformations on the input stream to count all fruits captured in 10-second intervals
-        DataStream<Tuple2<String, Integer>> output_stream = StreamProcessorFactory.get_processor(
+        DataStream<Tuple2<String, Integer>> output_stream = StreamProcessorFactory
             // set the execution mode for the data processing strategy
-            ExecutionMode.valueOf(params.get("mode", "IMAGES")), paths)
+            .get_processor(ExecutionMode.valueOf(params.get("mode", "IMAGES")), paths)
             // delegate the processing to the strategy implementation
-            .process(environment.fromSource(source, WatermarkStrategy.noWatermarks(),"Monitored directory"));
+            .process(environment.fromSource(source, WatermarkStrategy.noWatermarks(),"Monitored directory")
+                .name("Monitored directory").uid("source").setDescription("Source directory.").startNewChain());
 
         // sink to a log file containing results from this 10-second interval.
         OutputFileConfig output_file = OutputFileConfig.builder()
@@ -117,15 +110,21 @@ public class FruitStreaming {
                     new Path("file:"+paths.get("output")),
                     new SimpleStringEncoder<Tuple2<String, Integer>>("UTF-8"))
                 .withOutputFileConfig(output_file)
-                .withRollingPolicy(OnCheckpointRollingPolicy.build()) // this is important
+                .withRollingPolicy(OnCheckpointRollingPolicy.build())// this is important
                 .build();
 
-        output_stream.sinkTo(file_sink).name("File")
+        output_stream.sinkTo(file_sink).name("File").uid("file-sink")
             .setDescription("Sink to a log file containing results from this 10-second interval.");
 
         // sink to a database and update it with the results from this 10-second interval.
-        output_stream.addSink(database_sink)
-            .name("Database")
+        System.out.println("Setting up database credentials...");
+        SinkFunction<Tuple2<String, Integer>> database_sink = new DBSink(
+            params.get("url", "jdbc:mysql://localhost:3306/fruits"),
+            params.get("user", "fruit_enthusiast"),
+            params.get("password", "Fru!t5"));
+
+        output_stream.rescale().addSink(database_sink)
+            .name("Database").uid("db-sink")
             .setDescription("Sink to a database and update it with the results from this 10-second interval.");
 
         // triggers the job

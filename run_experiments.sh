@@ -12,6 +12,7 @@ echo "Running all experiments..."
 echo "Starting Prometheus at localhost:9090"
 nohup bash -c "prometheus --web.page-title='Fruit Stream Processing' --config.file=./config/prometheus.yml" &
 PROMETHEUS_PID=$!
+echo $PROMETHEUS_PID
 
 # start grafana @localhost:3000
 echo "Starting Grafana server at localhost:3000"
@@ -22,8 +23,11 @@ echo "Starting Flink cluster at localhost:8081"
 $FLINK_HOME/bin/start-cluster.sh
 
 # run the scripts
+./scripts/100000-line-XP.sh 0
+./scripts/10-batch-10000-line-XP.sh 0
 ./scripts/large-input-images.sh 0
-./scripts/large-input-text.sh 0
+
+echo "DONE!"
 
 # stop prometheus
 kill $PROMETHEUS_PID

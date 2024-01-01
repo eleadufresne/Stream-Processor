@@ -39,14 +39,14 @@ public class TextFileProcessor implements StreamProcessor {
         return input_stream
                 .filter((FilterFunction<String>) value -> value.endsWith("orange"))
                 .setDescription("Keep only the oranges.")
-                .name("Filter")
+                .name("Filter").uid("orange-filter").startNewChain()
                 .map(new TextTokenizer())
-                .setDescription("Group each orange into a tupple.")
-                .name("Map")
+                .setDescription("Group each orange into a tuple.")
+                .name("Map").uid("tuple-map").startNewChain()
                 .keyBy(value -> value.f0)
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(10)))
                 .sum(1) // sums the results that were accumulated over 10s
                 .setDescription("Group and sum fruit types over 10-second intervals.")
-                .name("Keyed Aggregation");
+                .name("Keyed Aggregation").uid("keyed-sum").startNewChain();
     }
 }

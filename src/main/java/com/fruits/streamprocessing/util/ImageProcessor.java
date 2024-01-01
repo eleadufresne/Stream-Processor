@@ -15,15 +15,14 @@ import java.util.Map;
  *  @author Éléa Dufresne
  */
 public class ImageProcessor implements StreamProcessor {
-    final private ImageTokenizer image_tokenizer;
+    final private String input_path, output_path;
     /** constructor
      *
      * @param paths paths for the application
      */
     public ImageProcessor(Map<String, String> paths) {
-        image_tokenizer = new ImageTokenizer(
-            paths.get("input") + "/images/",
-            paths.get("output") + "/processed-images/");
+        input_path = paths.get("input") + "/images/";
+        output_path = paths.get("output") + "/processed-images/";
     }
 
     /** Apply transformations on the input stream to count all fruits captured in 10-second intervals.
@@ -33,13 +32,13 @@ public class ImageProcessor implements StreamProcessor {
      */
     public DataStream<Tuple2<String, Integer>> process(DataStream<String> input_stream) {
         // count the circles (placeholder for fruits) in this window's images
-        return input_stream
+        return input_stream.rescale()
                 .filter((FilterFunction<String>) value -> value.endsWith(".png") || value.endsWith(".jpg"))
                 .setDescription("Keep only the path to images (i.e. PNG or JPG).")
-                .name("Filter")
-                .map(image_tokenizer).setParallelism(10)
+                .name("Filter").uid("image-filter").rescale()
+                .map(new ImageTokenizer(input_path, output_path)).setParallelism(8)
                 .setDescription("Detect the fruits each image and crop them accordingly.")
-                .name("Map")
+                .name("Map").uid("fruit-map").startNewChain().rescale()
                 // group by the first value (i.e. the fruit type)
                 .keyBy(value -> value.f0)
                 // collect over 10s
@@ -47,6 +46,6 @@ public class ImageProcessor implements StreamProcessor {
                 // sum the results
                 .sum(1)
                 .setDescription("Group and sum fruit types over 10-second intervals.")
-                .name("Keyed Aggregation");
+                .name("Keyed Aggregation").uid("keyed-aggregation").startNewChain();
     }
 }
