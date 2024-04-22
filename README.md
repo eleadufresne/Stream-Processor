@@ -1,9 +1,6 @@
 # Overview
-Apache Flink powers this app and offers an efficient solution for intelligent agriculture. It automates data processing 
-and continuously monitors a designated directory, reading new files every 10 seconds. The app is explicitly tailored to 
-analyze fruit data, effectively filtering and quantifying various fruit types. After processing, it stores these results
-in a MySQL database. This tool streamlines agricultural data analysis, significantly reducing manual effort and time. 
-It paves the way for more informed and timely decisions in intelligent farming.
+This app uses Apache Flink for automated data processing and monitoring of a designated directory to read new files every 10 seconds. It analyzes fruit data and stores the results in a MySQL database. 
+This tool streamlines agricultural data analysis, reducing manual effort and time. Prometheus and Grafana are used for logging and monitoring.
 
 ### Features
 - Real-time monitoring of fruit quality and maturity
